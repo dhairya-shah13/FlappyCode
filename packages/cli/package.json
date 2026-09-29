@@ -1,0 +1,40 @@
+{
+  "name": "flappycode",
+  "version": "0.0.0-dev",
+  "description": "Your connected providers. All the free models. One powerful coding agent.",
+  "type": "module",
+  "bin": {
+    "flappycode": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "rules",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "test": "vitest run",
+    "prepublishOnly": "node ../../scripts/block-publish.mjs"
+  },
+  "dependencies": {
+    "@flappycode/core": "workspace:*",
+    "@flappycode/protocol": "workspace:*",
+    "@flappycode/providers": "workspace:*",
+    "@flappycode/storage": "workspace:*",
+    "@flappycode/tui": "workspace:*"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.6",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.7"
+  }
+}

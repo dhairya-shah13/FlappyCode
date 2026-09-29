@@ -1,9 +1,9 @@
 # FlappyCode — Context & State
 
-Last updated: 2026-09-29T12:08:00+05:30 (Task P1-A1)
+Last updated: 2026-09-29T12:20:00+05:30 (Task P1-A2)
 
 ## Current Repository State
-- **Status:** Week 1 Bootstrap (Task P1-A1 in progress).
+- **Status:** Monorepo scaffold complete (Task P1-A2 complete, moving to P1-A5).
 - **Core invariant check:**
   - Engine is a library; CLI is a client.
   - Zero telemetry, local-first.
@@ -12,13 +12,21 @@ Last updated: 2026-09-29T12:08:00+05:30 (Task P1-A1)
   - Windows is a first-class supported OS.
 - **Node & Package Tooling:**
   - Node: `v24.12.0` (meets `engines: ">=20"` requirement).
-  - Package Manager: `pnpm@12.6.0` (pinned).
-  - TypeScript: strict, ESM-only.
+  - Package Manager: `pnpm@12.6.0` (pinned via `packageManager`).
+  - Turborepo: `v2.11.5` managing build/typecheck/lint/test pipelines.
+  - TypeScript: strict, ESM-only, composite references with `tsconfig.base.json`.
+  - SQLite: Node.js built-in `node:sqlite` (DatabaseSync) per `[DEC-004]`.
+- **Packages Scaffolded:**
+  - `@flappycode/protocol`
+  - `@flappycode/storage`
+  - `@flappycode/providers`
+  - `@flappycode/core`
+  - `@flappycode/tui`
+  - `flappycode` (`packages/cli`)
 - **License:** Apache-2.0 (provisional per PRD OQ-5, logged in `docs/DECISIONS.md`).
-- **NPM Publication:** Disabled. Package owner will claim `flappycode` post-Phase 1. Anti-publish guard to be configured in Task A4.
+- **NPM Publication:** Disabled. Package owner will claim `flappycode` post-Phase 1. Anti-publish guard in `scripts/block-publish.mjs`.
 
 ## How to Run
-*(Scaffolding underway in Task A2)*
 - Install: `pnpm install`
 - Build: `pnpm build`
 - Typecheck: `pnpm typecheck`

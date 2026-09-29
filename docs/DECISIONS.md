@@ -18,3 +18,8 @@ All architectural deviations, structural choices, and provisional decisions are 
 - **Context:** Week 1 Task A1 / A4 originally mentioned claiming npm package placeholder `0.0.1`. The project owner will claim the npm name `flappycode` after Phase 1.
 - **Decision:** Do not run `npm publish`, `npm login`, or publish any placeholder during Phase 1. Implement strict publish-blocking guards (`scripts/block-publish.mjs`) to prevent accidental publishing.
 - **Why:** Honour owner instruction to claim the name post-Phase 1 while ensuring local package packing and install testing (`npm pack` smoke test) still function reliably.
+
+### [DEC-004] 2026-09-29 — Use node:sqlite Built-in Instead of better-sqlite3
+- **Context:** Task A6 specification required verifying that `better-sqlite3` prebuilt binaries install on Windows without a compiler. `better-sqlite3@11.10.0` has no prebuilt binaries for Node v24 on win32-x64, causing `node-gyp` failure without Visual Studio C++ tools.
+- **Decision:** Use Node.js built-in `node:sqlite` (`DatabaseSync`) for `@flappycode/storage`.
+- **Why:** `node:sqlite` is built into Node.js (Node >= 22.5), requiring zero native compilation, zero prebuild downloads, and zero external binary dependencies. It provides synchronous prepared statements, transactions, pragmas, and WAL support matching `better-sqlite3` ergonomics while guaranteeing flawless cross-platform installation on Windows, macOS, and Linux.
