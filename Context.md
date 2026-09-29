@@ -1,15 +1,22 @@
 # FlappyCode — Context & State
 
-Last updated: 2026-09-29T12:24:00+05:30 (Task P1-A5)
+Last updated: 2026-09-29T12:27:00+05:30 (Task P1-B1)
 
 ## Current Repository State
-- **Status:** Protocol package complete (Task P1-A5 **M0 Milestone** complete, moving to P1-B1).
+- **Status:** Provider connector interface and mock harness complete (Task P1-B1 complete, moving to P1-A3).
 - **Core invariant check:**
   - Engine is a library; CLI is a client.
   - Zero telemetry, local-first.
-  - Secrets never leak into logs or prompts.
-  - No silent paid spend (`TierSchema` and `FREE_TIERS` set typed and guarded).
+  - Secrets never leak into logs or prompts (`redactSecrets` verified, Bearer and key formats scrubbed).
+  - No silent paid spend.
   - Windows is a first-class supported OS.
+- **Providers Foundation Delivered (`@flappycode/providers`):**
+  - `ProviderConnector` interface: `authenticate`, `listModels`, `complete`, `getQuota`, `healthCheck`.
+  - Normalized types: `CompletionRequest`, `CompletionChunk` discriminated union, `Message`, `ToolCall`, `ToolDefinition`, `RawModel`, `QuotaInfo`, `HealthInfo`.
+  - Typed errors with stable codes and actionable messages: `AuthError`, `RateLimitError`, `ServerError`, `NetworkError`, `TimeoutError`, `MalformedResponseError`, `ModelNotFoundError`, `AbortedError`.
+  - `MockProvider`: driven by scenario DSL (`ok`, `okToolCall`, `rateLimit`, `http5xx`, `malformedJson`, `malformedToolCall`, `timeout`, `slowStream`, `vanishModel`, `authFail`).
+  - `MockOpenAIServer`: local `node:http` server on ephemeral port serving OpenAI-compatible wire protocol (JSON + SSE stream, tool calls, 429 Retry-After, 500), with request headers and body recording.
+  - Tests: 28 unit tests covering error classes, redaction, mock scenarios, and HTTP wire contracts.
 - **Protocol Package Delivered (`@flappycode/protocol`):**
   - Domain schemas: `Tier`, `FREE_TIERS`, `Model`, `ProviderConfig`, `AgentDefinition`, `TaskNode`, `TaskGraph`, `Config`.
   - Commands: `CommandSchema` discriminated union (11 command types).

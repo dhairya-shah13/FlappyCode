@@ -6,6 +6,13 @@ All notable changes to this project are documented here with timestamps and task
 
 ### [Unreleased]
 
+#### 2026-09-29T12:27:00+05:30 — Task P1-B1
+- Implemented `ProviderConnector` interface, normalized LLM types (`CompletionRequest`, `CompletionChunk`, `Message`, `ToolCall`).
+- Created typed provider error classes (`AuthError`, `RateLimitError`, `ServerError`, `NetworkError`, `TimeoutError`, `MalformedResponseError`, `ModelNotFoundError`, `AbortedError`) and `redactSecrets` filter.
+- Created `MockProvider` driven by scenario DSL (`ok`, `okToolCall`, `rateLimit`, `http5xx`, `malformedJson`, `malformedToolCall`, `timeout`, `slowStream`, `vanishModel`, `authFail`).
+- Implemented `MockOpenAIServer` on ephemeral port implementing OpenAI JSON and SSE streaming, tool calls, 429 Retry-After, and full call recording.
+- Added 28 unit tests with 100% pass rate.
+
 #### 2026-09-29T12:24:00+05:30 — Task P1-A5 (M0 Milestone)
 - Implemented `@flappycode/protocol` with Zod schemas for Commands, Events, and Domain models.
 - Added TaskGraph DAG validator with Kahn's algorithm cycle detection, duplicate ID detection, and dependency resolution checks.
