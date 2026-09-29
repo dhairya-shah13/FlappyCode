@@ -7,6 +7,7 @@ export default defineConfig({
   platform: 'node',
   sourcemap: true,
   clean: true,
+  noExternal: [/^@flappycode\//],
   banner: {
     js: '#!/usr/bin/env node',
   },

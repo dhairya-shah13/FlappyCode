@@ -1,9 +1,17 @@
 # FlappyCode — Context & State
 
-Last updated: 2026-09-29T12:44:00+05:30 (Task P1-F1)
+Last updated: 2026-09-29T12:50:00+05:30 (Task P1-A4)
 
 ## Current Repository State
-- **Status:** Universal & Category Rules + RulesLoader complete (Task P1-F1 complete, moving to P1-A4).
+- **Status:** Bundling, CLI packaging, anti-publish guard, and smoke install script complete (Task P1-A4 complete, moving to P1-A6).
+- **Packaging & CLI Distribution Delivered (`packages/cli` & `flappycode`):**
+  - Configured `tsup` bundling with `noExternal: [/^@flappycode\//]` inlining all internal workspace packages into a clean standalone ESM `dist/cli.js` with shebang `#!/usr/bin/env node`.
+  - Added `scripts/copy-cli-assets.mjs` ensuring `rules/`, `LICENSE`, and `README.md` are copied into the package before packaging.
+  - Implemented complete CLI entry point with flags (`--version`, `--help`, `--approve-plan`, `--model`, `--json`, `--quiet`, `--debug`), interactive TUI launch, fixture replay command, diagnostic `rules` command, and headless `run` command.
+  - Strict enforcement of `--approve-plan` in headless mode (exiting with code 3 if missing, per SRS FR-RUL-009 / CLIDesign §6).
+  - Protected against accidental npm publishing via `scripts/block-publish.mjs` wired into `prepublishOnly`.
+  - Full smoke test script `scripts/smoke-install.mjs` verifying `pnpm pack`, tarball size budget (<52 KB vs 5MB max), clean tarball contents without credentials or unwanted files, prefix installation, and CLI command execution.
+  - 9 unit tests in `packages/cli` passing.
 - **Rules Foundation Delivered (`rules/` & `@flappycode/core`):**
   - Authored `rules/RULES.md` with 25+ universal operating rules with stable IDs (`[COMM-]`, `[PLAN-]`, `[SEC-]`, `[UX-]`, `[CODE-]`, `[SCOPE-]`, `[DOCS-]`, `[CAT-]`, `[STOP-]`, `[NEVER-]`, `[UNTRUST-]`).
   - Authored `rules/FORMAT.md` rule file specification.

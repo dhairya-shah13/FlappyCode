@@ -24,3 +24,6 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+packages/cli/rules/
+packages/cli/LICENSE
+packages/cli/README.md

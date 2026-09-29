@@ -19,20 +19,26 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsup",
+    "build": "node ../../scripts/copy-cli-assets.mjs && tsup",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
     "test": "vitest run",
     "prepublishOnly": "node ../../scripts/block-publish.mjs"
   },
   "dependencies": {
+    "eventsource-parser": "^3.0.4",
+    "ink": "^5.1.0",
+    "js-yaml": "^4.1.0",
+    "react": "^18.3.1",
+    "zod": "^3.24.1",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
     "@flappycode/core": "workspace:*",
     "@flappycode/protocol": "workspace:*",
     "@flappycode/providers": "workspace:*",
     "@flappycode/storage": "workspace:*",
-    "@flappycode/tui": "workspace:*"
-  },
-  "devDependencies": {
+    "@flappycode/tui": "workspace:*",
     "tsup": "^8.3.6",
     "typescript": "^5.7.3",
     "vitest": "^3.0.7"

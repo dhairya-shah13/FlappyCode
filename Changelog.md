@@ -6,6 +6,13 @@ All notable changes to this project are documented here with timestamps and task
 
 ### [Unreleased]
 
+#### 2026-09-29T12:50:00+05:30 — Task P1-A4
+- Configured `tsup` bundling with `noExternal: [/^@flappycode\//]` producing self-contained executable `dist/cli.js`.
+- Implemented `scripts/copy-cli-assets.mjs` for cross-platform bundling of rules and legal assets.
+- Implemented complete CLI entry point with subcommands (`run`, `replay`, `rules`), flags (`--version`, `--help`, `--approve-plan`), and headless plan approval validation.
+- Created `scripts/smoke-install.mjs` running end-to-end tarball creation, file inspection, isolated global prefix installation, and command validation.
+- Added unit tests for CLI argument parsing and execution in `packages/cli`.
+
 #### 2026-09-29T12:44:00+05:30 — Task P1-F1
 - Authored `rules/RULES.md` universal operating ruleset and `rules/FORMAT.md` rule file specification.
 - Authored 10 category rule files in `rules/categories/` covering frontend, backend, mobile, cli, library-sdk, infrastructure, data-ml, monorepo, documentation, and marketing-seo.
