@@ -6,6 +6,12 @@ All notable changes to this project are documented here with timestamps and task
 
 ### [Unreleased]
 
+#### 2026-09-29T12:24:00+05:30 — Task P1-A5 (M0 Milestone)
+- Implemented `@flappycode/protocol` with Zod schemas for Commands, Events, and Domain models.
+- Added TaskGraph DAG validator with Kahn's algorithm cycle detection, duplicate ID detection, and dependency resolution checks.
+- Implemented typed `EventBus` supporting subscriptions, typed handlers, one-time promises (`once`), and async iterator (`[Symbol.asyncIterator]`).
+- Added 47 unit tests across domain, commands, events, graph, and bus modules.
+
 #### 2026-09-29T12:20:00+05:30 — Task P1-A2
 - Scaffolded pnpm monorepo with Turborepo, TypeScript strict composite base, ESLint, Prettier, and Vitest.
 - Set up packages `@flappycode/protocol`, `@flappycode/storage`, `@flappycode/providers`, `@flappycode/core`, `@flappycode/tui`, and `flappycode` (`packages/cli`).
