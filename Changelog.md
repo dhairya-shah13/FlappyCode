@@ -6,6 +6,12 @@ All notable changes to this project are documented here with timestamps and task
 
 ### [Unreleased]
 
+#### 2026-09-29T13:08:00+05:30 — Task P1-F2
+- Implemented `PromptComposer` enforcing deterministic section ordering: Core Preamble -> Rules -> Agent Persona -> Project Context -> Additional Instructions.
+- Enforced mandatory operating rules check with typed `RulesMissingError`.
+- Implemented `wrapUntrusted` with injection-resistant fences, source sanitization, and nested breakout tag escaping.
+- Added comprehensive unit tests for prompt composition and untrusted boundary fencing.
+
 #### 2026-09-29T13:05:00+05:30 — Task P1-G2
 - Created pixel text assets (`assets/logo.pixels`, `assets/bird.pixels`, `assets/speedlines.pixels`).
 - Implemented pixel compiler with horizontal sprite mirroring, half-block glyph rendering, and multi-tier color degradation (TrueColor, ANSI 256, ANSI 16, NO_COLOR, and ASCII).

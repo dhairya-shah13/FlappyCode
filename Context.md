@@ -1,9 +1,15 @@
 # FlappyCode — Context & State
 
-Last updated: 2026-09-29T13:05:00+05:30 (Task P1-G2)
+Last updated: 2026-09-29T13:08:00+05:30 (Task P1-F2)
 
 ## Current Repository State
-- **Status:** Pixel logo map, banner compiler, and responsive banner renderer complete (Task P1-G2 complete, moving to P1-F2).
+- **Status:** PromptComposer with mandatory rules and untrusted fencing complete (Task P1-F2 complete, moving to P1-B3).
+- **Prompt Composer Delivered (`@flappycode/core`):**
+  - Implemented `composePrompt` with strict deterministic section ordering: Core Preamble -> Operating Rules -> Agent Persona & Instructions -> Project Context Slice -> Additional Task Instructions.
+  - Enforced mandatory operating rules: raises `RulesMissingError` if rules are omitted or empty (per FR-RUL-002: every agent must run under RULES.md).
+  - Implemented `wrapUntrusted` with secure injection-resistant delimiters (`<untrusted_content source="...">`), escaping nested breakout tags and sanitizing source identifiers.
+  - Injects project context, conventions, and memory slices.
+  - 24 unit tests in `@flappycode/core` passing.
 - **Banner & Pixel Art Delivered (`@flappycode/tui`):**
   - Created pixel grid assets `assets/logo.pixels`, `assets/bird.pixels`, and `assets/speedlines.pixels`.
   - Implemented pixel compiler with horizontal grid mirroring, color tokens (`flappy-yellow`, `code-cyan`, `beak-orange`, `wing-blue`, `eye-white`), and multi-tier degradation (`truecolor`, `ansi256`, `ansi16`, `no_color`, `ascii`).
