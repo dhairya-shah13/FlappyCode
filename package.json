@@ -4,6 +4,8 @@
   "packageManager": "pnpm@12.6.0",
   "type": "module",
   "scripts": {
+    "start": "node packages/cli/dist/cli.js",
+    "flappycode": "node packages/cli/dist/cli.js",
     "build": "turbo run build",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
