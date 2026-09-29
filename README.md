@@ -11,7 +11,7 @@
 ---
 
 > [!NOTE]  
-> **Development Notice:** FlappyCode is currently in its **planning and specification phase**. Active development kicks off on **October 1, 2026**, with the Phase 1 CLI core engine scheduled for completion before October 25, 2026. See the [Master Timeline](#-master-timeline--milestones) and [Task Breakdown](docs/TaskBreakdown.md) for details.
+> **Development Notice:** FlappyCode is under active Phase 1 development (Week 1: foundations & core). **It is not yet published to npm.** The package name `flappycode` will be published following Phase 1 completion.
 
 ---
 
@@ -383,7 +383,7 @@ pnpm --filter @flappycode/cli dev
 
 ## 📄 License
 
-FlappyCode will be licensed under the [Apache-2.0 / MIT Dual License](docs/PRD.md).
+FlappyCode is licensed under the [Apache-2.0 License](LICENSE) provisionally (see [DECISIONS.md](docs/DECISIONS.md#dec-001-2026-09-29--provisional-apache-20-license)).
 
 ---
 
