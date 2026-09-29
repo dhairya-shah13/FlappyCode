@@ -1,15 +1,24 @@
 # FlappyCode — Context & State
 
-Last updated: 2026-09-29T13:11:00+05:30 (Task P1-B3)
+Last updated: 2026-09-29T13:17:00+05:30 (Task P1-G3 / Milestone M1 Complete)
 
 ## Current Repository State
-- **Status:** Provider profiles, ToS data-use policies, and verification matrix complete (Task P1-B3 complete, moving to P1-G3).
-- **Provider Profiles & Verification Delivered (`@flappycode/providers`):**
-  - Defined strict Zod `ProviderProfileSchema` validating provider metadata, endpoint URLs, auth schemes, rate limits, discovery support, and ToS data usage policies (`trains_on_data: yes|no|opt_out|unknown`).
-  - Authored 10 day-one provider profiles in `packages/providers/profiles/*.json`: OpenRouter, GroqCloud, Together AI, Kilocode, Ollama Cloud, Google AI Studio, Anthropic, OpenAI, LM Studio (Local), and Ollama (Local).
-  - Documented full matrix and transparent data-use disclosure in `docs/PROVIDERS.md`.
-  - Added unverified terms to `NEEDS_HUMAN_VERIFICATION` section (flagging Kilocode).
-  - 46 unit and contract tests in `@flappycode/providers` passing.
+- **Status:** Week 1 and Milestone M1 complete! Full home screen Zones A–E rendered, reactive Zustand store, OpenAI-compatible streaming connector verified, storage migrations active, and npm pack smoke passed.
+- **Home Screen Zones A–E Delivered (`@flappycode/tui`):**
+  - Implemented responsive home screen in `App` component with 5 visual zones:
+    - **Zone A:** Terminal chrome / collapsed header when tasks are active with project path indicator.
+    - **Zone B:** Centered pixel banner (`<Banner />`) showing full birds + speedlines (>=100 cols), wordmark (70–99 cols), or compact text (45–69 cols).
+    - **Zone C:** Visual taglines: Line 1 (white bold bullet-separated) and Line 2 (cyan subtitle), responsive to terminal width.
+    - **Zone D:** Rounded cyan input box with `>_` prompt glyph, placeholder text, and first-run onboarding banner when 0 providers are connected.
+    - **Zone E:** 3-part responsive status bar separated by cyan rules `─`, featuring `<o)` bird mascot, live provider and free model counts from `registry.updated`, and reactive state badges (`⚡ Ready!`, `◐ Working…`, `● Waiting for approval`, `✖ Free pool exhausted`, `○ No providers`).
+  - Active task nodes and pending approval banner support.
+  - Tested across 120, 90, 60, and 40 column viewports using `ink-testing-library`.
+  - 31 unit and component tests in `@flappycode/tui` passing.
+- **Milestone M1 Exit Targets Achieved:**
+  - [x] Home screen renders Zones A–E responsively in TUI (`packages/tui/src/app.tsx`).
+  - [x] One provider streams a completion (`OpenAICompatibleConnector` verified with SSE streaming).
+  - [x] Pack smoke passes (`scripts/smoke-install.mjs` verifying clean tarball, global install, and binary execution).
+  - [x] Storage migrations complete (`001_init.sql` running on Node.js built-in `node:sqlite`).
 - **Prompt Composer Delivered (`@flappycode/core`):**
   - Implemented `composePrompt` with strict deterministic section ordering: Core Preamble -> Operating Rules -> Agent Persona & Instructions -> Project Context Slice -> Additional Task Instructions.
   - Enforced mandatory operating rules: raises `RulesMissingError` if rules are omitted or empty (per FR-RUL-002: every agent must run under RULES.md).

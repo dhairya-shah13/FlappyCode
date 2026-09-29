@@ -74,29 +74,29 @@ gantt
 ### 2.2 Week 1 — Tue 29 Sep → Sun 4 Oct: Foundations and first provider
 
 **S3 — Foundation** (~5.25 d)
-- [ ] **P1-A1** (P0) Claim npm package `flappycode` (registry showed it free on 29 Sep), GitHub repo, licence (Apache-2.0/MIT — OQ-5) — 0.25 d — **29 Sep**
-- [ ] **P1-A2** (P0) Monorepo scaffold: pnpm + Turborepo, strict TS, ESLint/Prettier, Vitest — 1 d — 30 Sep
-- [ ] **P1-A3** (P0) CI: GitHub Actions matrix (Windows/macOS/Linux × Node 20/22): lint, test, build — 1 d — 1 Oct
-- [ ] **P1-A5** (P0) `protocol` package: zod schemas for Commands, Events, config, task graph — 1.5 d — 1 Oct (**M0**)
-- [ ] **P1-A6** (P0) `storage`: SQLite (WAL), migrations, schema v1 from SRS §6.1 incl. `usage_local` — 1.5 d — 3 Oct
+- [x] **P1-A1** (P0) Claim npm package `flappycode` (deferred to owner post-Phase 1 per DEC-002), GitHub repo, licence (Apache-2.0 per DEC-001) — 0.25 d — **29 Sep**
+- [x] **P1-A2** (P0) Monorepo scaffold: pnpm + Turborepo, strict TS, ESLint/Prettier, Vitest — 1 d — 30 Sep
+- [x] **P1-A3** (P0) CI: GitHub Actions matrix (Windows/macOS/Linux × Node 20/22): lint, test, build — 1 d — 1 Oct
+- [x] **P1-A5** (P0) `protocol` package: zod schemas for Commands, Events, config, task graph — 1.5 d — 1 Oct (**M0**)
+- [x] **P1-A6** (P0) `storage`: SQLite (WAL), migrations, schema v1 from SRS §6.1 incl. `usage_local` — 1.5 d — 3 Oct
 
 **S1 — Providers** (~5 d)
-- [ ] **P1-B1** (P0) `ProviderConnector` interface + **mock provider harness** (scriptable rate limits, 5xx, malformed output, vanishing models) — 1.5 d — 30 Sep
-- [ ] **P1-B2** (P0) OpenAI-compatible connector on Vercel AI SDK (streaming + tool calls) — covers OpenRouter, Groq, Together, Fireworks, Kilocode, LM Studio, Ollama `/v1`, llama.cpp — 2 d — 2 Oct
-- [ ] **P1-B3** (P0) **Verify** discovery endpoints, free-tier signals and ToS for day-one providers (OpenRouter, Groq, Together, Kilocode, Ollama Cloud, Google AI Studio, Anthropic, OpenAI); write provider profiles + data-use labels — 1.5 d — 4 Oct
+- [x] **P1-B1** (P0) `ProviderConnector` interface + **mock provider harness** (scriptable rate limits, 5xx, malformed output, vanishing models) — 1.5 d — 30 Sep
+- [x] **P1-B2** (P0) OpenAI-compatible connector on Vercel AI SDK (streaming + tool calls) — covers OpenRouter, Groq, Together, Fireworks, Kilocode, LM Studio, Ollama `/v1`, llama.cpp — 2 d — 2 Oct
+- [x] **P1-B3** (P0) **Verify** discovery endpoints, free-tier signals and ToS for day-one providers (OpenRouter, Groq, Together, Kilocode, Ollama Cloud, Google AI Studio, Anthropic, OpenAI); write provider profiles + data-use labels — 1.5 d — 4 Oct
 
 **S2 — Orchestration/Rules** (~4.5 d)
-- [ ] **P1-F1** (P0) Author `RULES.md` (universal) + category rule files; `RulesLoader` with nested-override + conflict detection — 2 d — 2 Oct
-- [ ] **P1-D1** (P0) Declarative agent definition loader + agent runtime loop (tool loop, verbatim tool results) — 2 d — 3 Oct
-- [ ] **P1-F2** (P0) `PromptComposer` (rules + agent prompt + context) — 0.5 d — 4 Oct
+- [x] **P1-F1** (P0) Author `RULES.md` (universal) + category rule files; `RulesLoader` with nested-override + conflict detection — 2 d — 2 Oct
+- [x] **P1-D1** (P0) Declarative agent definition loader + agent runtime loop (tool loop, verbatim tool results) — 2 d — 3 Oct
+- [x] **P1-F2** (P0) `PromptComposer` (rules + agent prompt + context) — 0.5 d — 4 Oct
 
 **S4 — TUI/Release** (~4.5 d)
-- [ ] **P1-A4** (P0) tsup bundling, `bin: flappycode`, `npm pack` install smoke test in CI, publish placeholder `0.0.1` — 1 d — 2 Oct
-- [ ] **P1-G1** (P0) Ink app skeleton + store bound to event bus (fixture replay mode) — 1 d — 1 Oct
-- [ ] **P1-G2** (P0) Logo pixel map + banner renderer (yellow/cyan letters, birds, speed lines, responsive) — 1.5 d — 3 Oct
-- [ ] **P1-G3** (P0) Home screen zones A–E (static data) — 1 d — 4 Oct
+- [x] **P1-A4** (P0) tsup bundling, `bin: flappycode`, `npm pack` install smoke test in CI, publish placeholder `0.0.1` — 1 d — 2 Oct
+- [x] **P1-G1** (P0) Ink app skeleton + store bound to event bus (fixture replay mode) — 1 d — 1 Oct
+- [x] **P1-G2** (P0) Logo pixel map + banner renderer (yellow/cyan letters, birds, speed lines, responsive) — 1.5 d — 3 Oct
+- [x] **P1-G3** (P0) Home screen zones A–E (static data) — 1 d — 4 Oct
 
-**Exit:** ☐ **M0** (1 Oct) ☐ **M1** (4 Oct): home screen renders; one provider streams a completion.
+**Exit:** ☑ **M0** (1 Oct) ☑ **M1** (4 Oct): home screen renders; one provider streams a completion.
 
 ### 2.3 Week 2 — Mon 5 Oct → Sun 11 Oct: Pool, classifier, router
 

@@ -6,6 +6,13 @@ All notable changes to this project are documented here with timestamps and task
 
 ### [Unreleased]
 
+#### 2026-09-29T13:17:00+05:30 — Task P1-G3 (Milestone M1 Exit)
+- Implemented full interactive TUI home screen with Zones A–E in `@flappycode/tui/src/app.tsx`.
+- Implemented Zone A (collapsed header with project path indicator when working), Zone B (responsive pixel banner), Zone C (bulleted white and cyan taglines), Zone D (rounded cyan input box with `>_` prompt and onboarding guide), and Zone E (3-part status bar with mascot `<o)`, live provider/free model metrics, and reactive state indicators).
+- Added multi-tier responsive layouts adapting to >=100, 70–99, 45–69, and <45 terminal columns.
+- Added comprehensive `ink-testing-library` unit tests verifying responsive rendering and event reduction across all UI states.
+- Reached and verified Milestone M1 exit criteria across the monorepo.
+
 #### 2026-09-29T13:11:00+05:30 — Task P1-B3
 - Authored 10 verified day-one provider profiles (`openrouter`, `groq`, `together`, `kilocode`, `ollama_cloud`, `google_ai_studio`, `anthropic`, `openai`, `lm_studio`, `ollama_local`) validated by Zod schema.
 - Documented provider endpoints, authentication schemes, free-tier limits, and ToS data usage policies (`trains_on_data: yes|no|opt_out|unknown`) in `docs/PROVIDERS.md`.
