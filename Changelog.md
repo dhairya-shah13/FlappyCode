@@ -6,6 +6,13 @@ All notable changes to this project are documented here with timestamps and task
 
 ### [Unreleased]
 
+#### 2026-09-29T12:44:00+05:30 — Task P1-F1
+- Authored `rules/RULES.md` universal operating ruleset and `rules/FORMAT.md` rule file specification.
+- Authored 10 category rule files in `rules/categories/` covering frontend, backend, mobile, cli, library-sdk, infrastructure, data-ml, monorepo, documentation, and marketing-seo.
+- Implemented `detectCategoriesSync` repository auto-detection based on project files, layouts, and dependencies.
+- Implemented `RulesLoader` with strict precedence, explicit frontmatter override tracking, core protected rules (`SEC-`, `PLAN-`, `NEVER-`, `STOP-`) defense, and deterministic prompt block rendering.
+- Added comprehensive unit tests covering parsing, category detection, override validation, conflict errors, and prompt rendering.
+
 #### 2026-09-29T12:37:00+05:30 — Task P1-B2
 - Implemented `OpenAICompatibleConnector` with text streaming, fragmented tool-call assembly, and usage tracking.
 - Implemented honest `User-Agent: flappycode/<version>` header.

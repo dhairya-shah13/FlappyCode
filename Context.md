@@ -1,9 +1,17 @@
 # FlappyCode — Context & State
 
-Last updated: 2026-09-29T12:37:00+05:30 (Task P1-B2)
+Last updated: 2026-09-29T12:44:00+05:30 (Task P1-F1)
 
 ## Current Repository State
-- **Status:** OpenAI-compatible connector & dev completion script complete (Task P1-B2 complete, moving to P1-F1).
+- **Status:** Universal & Category Rules + RulesLoader complete (Task P1-F1 complete, moving to P1-A4).
+- **Rules Foundation Delivered (`rules/` & `@flappycode/core`):**
+  - Authored `rules/RULES.md` with 25+ universal operating rules with stable IDs (`[COMM-]`, `[PLAN-]`, `[SEC-]`, `[UX-]`, `[CODE-]`, `[SCOPE-]`, `[DOCS-]`, `[CAT-]`, `[STOP-]`, `[NEVER-]`, `[UNTRUST-]`).
+  - Authored `rules/FORMAT.md` rule file specification.
+  - Authored 10 category rule files in `rules/categories/` (`frontend.md`, `backend.md`, `mobile.md`, `cli.md`, `library-sdk.md`, `infrastructure.md`, `data-ml.md`, `monorepo.md`, `documentation.md`, `marketing-seo.md`), each containing 15 high-fidelity ID-tagged rules.
+  - Implemented `detectCategoriesSync` repository analyzer auto-detecting active categories based on layout, files, and package dependencies.
+  - Implemented `RulesLoader` with strict precedence (`shipped universal -> category rules -> user global -> project root -> nested scoped`), explicit `overrides` checking, and protected core rules (`SEC-`, `PLAN-`, `NEVER-`, `STOP-`) raising `weakens_core_rule` conflicts.
+  - Deterministic prompt block rendering with untrusted boundary fences.
+  - 10 unit tests in `@flappycode/core` passing.
 - **OpenAI-Compatible Connector Delivered (`@flappycode/providers`):**
   - Full streaming completion support via `OpenAICompatibleConnector`.
   - Fragmented tool-call accumulation, JSON validation, and error emitting.
