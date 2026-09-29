@@ -6,6 +6,13 @@ All notable changes to this project are documented here with timestamps and task
 
 ### [Unreleased]
 
+#### 2026-09-29T12:37:00+05:30 — Task P1-B2
+- Implemented `OpenAICompatibleConnector` with text streaming, fragmented tool-call assembly, and usage tracking.
+- Implemented honest `User-Agent: flappycode/<version>` header.
+- Implemented strict secret redaction preventing raw API keys from surfacing in error messages.
+- Added `scripts/dev-complete.ts` and `pnpm dev:complete` for streaming completions directly to stdout.
+- Added 12 contract and integration tests with `MockOpenAIServer`.
+
 #### 2026-09-29T12:32:00+05:30 — Task P1-G1
 - Built React Ink TUI skeleton with reactive `UIStore` subscribing to engine `EventBus`.
 - Implemented `replay` utility for fixture-driven UI execution.

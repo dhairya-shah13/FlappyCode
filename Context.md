@@ -1,9 +1,17 @@
 # FlappyCode — Context & State
 
-Last updated: 2026-09-29T12:32:00+05:30 (Task P1-G1)
+Last updated: 2026-09-29T12:37:00+05:30 (Task P1-B2)
 
 ## Current Repository State
-- **Status:** Ink TUI skeleton, reactive store, and fixture replay complete (Task P1-G1 complete, moving to P1-B2).
+- **Status:** OpenAI-compatible connector & dev completion script complete (Task P1-B2 complete, moving to P1-F1).
+- **OpenAI-Compatible Connector Delivered (`@flappycode/providers`):**
+  - Full streaming completion support via `OpenAICompatibleConnector`.
+  - Fragmented tool-call accumulation, JSON validation, and error emitting.
+  - Honest `User-Agent: flappycode/<version>` header.
+  - Strict secret hygiene (`redactSecrets` scrubs Authorization headers and known API keys from error messages and logs).
+  - Robust error mapping (401/403 → `AuthError`, 429 → `RateLimitError` with parsed `Retry-After`, 5xx → `ServerError`, timeout → `TimeoutError`, abort → `AbortedError`).
+  - `pnpm dev:complete` streaming CLI script connecting to any OpenAI-compatible endpoint.
+  - 40 unit and contract tests in `@flappycode/providers` passing.
 - **TUI & Replay Delivered (`@flappycode/tui`):**
   - Reactive `UIStore` using Zustand vanilla reducing engine events (`session.started`, `registry.updated`, `node.started/updated/finished`, `approval.requested`, `pool.exhausted`, etc.).
   - Pure function React/Ink `App` component with header, input box, active tasks view, and responsive status bar.
