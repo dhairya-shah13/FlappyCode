@@ -6,6 +6,12 @@ All notable changes to this project are documented here with timestamps and task
 
 ### [Unreleased]
 
+#### 2026-09-29T13:11:00+05:30 — Task P1-B3
+- Authored 10 verified day-one provider profiles (`openrouter`, `groq`, `together`, `kilocode`, `ollama_cloud`, `google_ai_studio`, `anthropic`, `openai`, `lm_studio`, `ollama_local`) validated by Zod schema.
+- Documented provider endpoints, authentication schemes, free-tier limits, and ToS data usage policies (`trains_on_data: yes|no|opt_out|unknown`) in `docs/PROVIDERS.md`.
+- Flagged unverified ToS terms in `NEEDS_HUMAN_VERIFICATION`.
+- Added unit tests validating profile schemas, privacy classifications, and markdown table generation.
+
 #### 2026-09-29T13:08:00+05:30 — Task P1-F2
 - Implemented `PromptComposer` enforcing deterministic section ordering: Core Preamble -> Rules -> Agent Persona -> Project Context -> Additional Instructions.
 - Enforced mandatory operating rules check with typed `RulesMissingError`.

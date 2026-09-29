@@ -1,9 +1,15 @@
 # FlappyCode — Context & State
 
-Last updated: 2026-09-29T13:08:00+05:30 (Task P1-F2)
+Last updated: 2026-09-29T13:11:00+05:30 (Task P1-B3)
 
 ## Current Repository State
-- **Status:** PromptComposer with mandatory rules and untrusted fencing complete (Task P1-F2 complete, moving to P1-B3).
+- **Status:** Provider profiles, ToS data-use policies, and verification matrix complete (Task P1-B3 complete, moving to P1-G3).
+- **Provider Profiles & Verification Delivered (`@flappycode/providers`):**
+  - Defined strict Zod `ProviderProfileSchema` validating provider metadata, endpoint URLs, auth schemes, rate limits, discovery support, and ToS data usage policies (`trains_on_data: yes|no|opt_out|unknown`).
+  - Authored 10 day-one provider profiles in `packages/providers/profiles/*.json`: OpenRouter, GroqCloud, Together AI, Kilocode, Ollama Cloud, Google AI Studio, Anthropic, OpenAI, LM Studio (Local), and Ollama (Local).
+  - Documented full matrix and transparent data-use disclosure in `docs/PROVIDERS.md`.
+  - Added unverified terms to `NEEDS_HUMAN_VERIFICATION` section (flagging Kilocode).
+  - 46 unit and contract tests in `@flappycode/providers` passing.
 - **Prompt Composer Delivered (`@flappycode/core`):**
   - Implemented `composePrompt` with strict deterministic section ordering: Core Preamble -> Operating Rules -> Agent Persona & Instructions -> Project Context Slice -> Additional Task Instructions.
   - Enforced mandatory operating rules: raises `RulesMissingError` if rules are omitted or empty (per FR-RUL-002: every agent must run under RULES.md).

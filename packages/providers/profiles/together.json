@@ -1,0 +1,30 @@
+{
+  "id": "together",
+  "name": "Together AI",
+  "type": "openai_compatible",
+  "baseUrl": "https://api.together.xyz/v1",
+  "authScheme": "bearer",
+  "envKeyName": "TOGETHER_API_KEY",
+  "discovery": {
+    "endpoint": "/models",
+    "supported": true
+  },
+  "supportsToolCalls": true,
+  "supportsStreaming": true,
+  "dataUsePolicy": {
+    "trainsOnData": "no",
+    "sourceUrl": "https://www.together.ai/privacy",
+    "verifiedAt": "2026-09-29",
+    "details": "Customer inputs and outputs processed via API are never used to train Together AI models."
+  },
+  "rateLimits": {
+    "freeTier": {
+      "requestsPerMinute": 10,
+      "notes": "Free tier trial credit with rate limits enforced per model."
+    }
+  },
+  "documentationUrl": "https://docs.together.ai/docs/quickstart",
+  "verifiedAt": "2026-09-29",
+  "needsHumanVerification": false,
+  "notes": "Hosts extensive open-weights collection including Qwen, DeepSeek, and Llama."
+}

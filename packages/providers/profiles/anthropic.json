@@ -1,0 +1,33 @@
+{
+  "id": "anthropic",
+  "name": "Anthropic",
+  "type": "anthropic",
+  "baseUrl": "https://api.anthropic.com/v1",
+  "authScheme": "x-api-key",
+  "envKeyName": "ANTHROPIC_API_KEY",
+  "discovery": {
+    "endpoint": "/models",
+    "supported": true
+  },
+  "supportsToolCalls": true,
+  "supportsStreaming": true,
+  "dataUsePolicy": {
+    "trainsOnData": "no",
+    "sourceUrl": "https://www.anthropic.com/legal/commercial-terms",
+    "verifiedAt": "2026-09-29",
+    "details": "Anthropic Commercial Terms state API customer prompt and completion data is never used to train generative models."
+  },
+  "rateLimits": {
+    "freeTier": {
+      "requestsPerMinute": 5,
+      "notes": "Evaluation free credits on signup."
+    },
+    "paidTier": {
+      "requestsPerMinute": 50
+    }
+  },
+  "documentationUrl": "https://docs.anthropic.com/en/api/getting-started",
+  "verifiedAt": "2026-09-29",
+  "needsHumanVerification": false,
+  "notes": "Supports Claude 3.5 Sonnet, Claude 3.5 Haiku, and Claude 3 Opus."
+}

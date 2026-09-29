@@ -1,0 +1,30 @@
+{
+  "id": "ollama_cloud",
+  "name": "Ollama Cloud",
+  "type": "openai_compatible",
+  "baseUrl": "https://api.ollama.com/v1",
+  "authScheme": "bearer",
+  "envKeyName": "OLLAMA_API_KEY",
+  "discovery": {
+    "endpoint": "/models",
+    "supported": true
+  },
+  "supportsToolCalls": true,
+  "supportsStreaming": true,
+  "dataUsePolicy": {
+    "trainsOnData": "no",
+    "sourceUrl": "https://ollama.com/privacy",
+    "verifiedAt": "2026-09-29",
+    "details": "Cloud hosted Ollama endpoints follow zero data retention and no training policies."
+  },
+  "rateLimits": {
+    "freeTier": {
+      "requestsPerMinute": 20,
+      "notes": "Developer tier with standard rate limits."
+    }
+  },
+  "documentationUrl": "https://ollama.com/docs",
+  "verifiedAt": "2026-09-29",
+  "needsHumanVerification": false,
+  "notes": "Hosts open models like Llama 3, Mistral, and Codellama."
+}

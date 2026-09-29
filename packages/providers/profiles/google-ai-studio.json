@@ -1,0 +1,31 @@
+{
+  "id": "google_ai_studio",
+  "name": "Google AI Studio",
+  "type": "google",
+  "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+  "authScheme": "bearer",
+  "envKeyName": "GEMINI_API_KEY",
+  "discovery": {
+    "endpoint": "/models",
+    "supported": true
+  },
+  "supportsToolCalls": true,
+  "supportsStreaming": true,
+  "dataUsePolicy": {
+    "trainsOnData": "yes",
+    "sourceUrl": "https://ai.google.dev/terms",
+    "verifiedAt": "2026-09-29",
+    "details": "Under free-tier Google AI Studio terms, Google may use prompt inputs and outputs to improve services unless using paid Google Cloud Vertex AI."
+  },
+  "rateLimits": {
+    "freeTier": {
+      "requestsPerMinute": 15,
+      "requestsPerDay": 1500,
+      "notes": "Free tier for Gemini 1.5 Flash and Gemini 1.5 Pro with 15 RPM and 1500 RPD."
+    }
+  },
+  "documentationUrl": "https://ai.google.dev/gemini-api/docs",
+  "verifiedAt": "2026-09-29",
+  "needsHumanVerification": false,
+  "notes": "CRITICAL: Displays 'trains_on_data: yes' data-use label in FlappyCode TUI for complete user transparency."
+}

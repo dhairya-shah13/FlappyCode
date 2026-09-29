@@ -11,3 +11,4 @@ export * from './mock/dsl.js';
 export * from './mock/provider.js';
 export * from './mock-server/server.js';
 export * from './openai-compatible/connector.js';
+export * from './profiles/index.js';
