@@ -6,6 +6,13 @@ All notable changes to this project are documented here with timestamps and task
 
 ### [Unreleased]
 
+#### 2026-09-29T13:05:00+05:30 — Task P1-G2
+- Created pixel text assets (`assets/logo.pixels`, `assets/bird.pixels`, `assets/speedlines.pixels`).
+- Implemented pixel compiler with horizontal sprite mirroring, half-block glyph rendering, and multi-tier color degradation (TrueColor, ANSI 256, ANSI 16, NO_COLOR, and ASCII).
+- Implemented responsive `renderBanner` supporting full (>=100 cols with birds and speedlines), wordmark (70–99 cols), compact (45–69 cols), and minimal tiers (<45 cols).
+- Added React/Ink `<Banner />` component and preview script `scripts/dev-banner.ts` (`pnpm dev:banner`).
+- Added 13 unit tests for banner rendering and responsive tiers in `@flappycode/tui`.
+
 #### 2026-09-29T13:01:00+05:30 — Task P1-D1
 - Authored 8 built-in specialist agent definitions (`planner`, `coder`, `reviewer`, `tester`, `file-finder`, `executor`, `analyst`, `general`) with frontmatter metadata and markdown prompts.
 - Implemented `AgentLoader` with 3-tier precedence (`built-in -> user-global -> project-local`).

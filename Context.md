@@ -1,9 +1,20 @@
 # FlappyCode — Context & State
 
-Last updated: 2026-09-29T13:01:00+05:30 (Task P1-D1)
+Last updated: 2026-09-29T13:05:00+05:30 (Task P1-G2)
 
 ## Current Repository State
-- **Status:** Declarative agent definitions and agent runtime loop complete (Task P1-D1 complete, moving to P1-G2).
+- **Status:** Pixel logo map, banner compiler, and responsive banner renderer complete (Task P1-G2 complete, moving to P1-F2).
+- **Banner & Pixel Art Delivered (`@flappycode/tui`):**
+  - Created pixel grid assets `assets/logo.pixels`, `assets/bird.pixels`, and `assets/speedlines.pixels`.
+  - Implemented pixel compiler with horizontal grid mirroring, color tokens (`flappy-yellow`, `code-cyan`, `beak-orange`, `wing-blue`, `eye-white`), and multi-tier degradation (`truecolor`, `ansi256`, `ansi16`, `no_color`, `ascii`).
+  - Implemented `renderBanner` with 4 responsive width tiers:
+    - `full` (>=100 cols): left bird + speedlines + FLAPPY CODE wordmark + speedlines + mirrored right bird.
+    - `wordmark` (70–99 cols): 5-row centered wordmark.
+    - `compact` (45–69 cols): single-line bold `FLAPPY CODE`.
+    - `minimal` (<45 cols or height <18): collapsed / warning for terminal <40x12.
+  - Implemented React/Ink `<Banner />` component.
+  - Added preview script `scripts/dev-banner.ts` (`pnpm dev:banner`).
+  - 26 unit tests in `@flappycode/tui` passing.
 - **Agent Definitions & Runtime Loop Delivered (`@flappycode/core`):**
   - Authored 8 built-in specialist agent definitions in `packages/core/agents/*.md` (`planner`, `coder`, `reviewer`, `tester`, `file-finder`, `executor`, `analyst`, `general`) with YAML frontmatter specifying allowed tools, model bindings, fallback policies, and markdown system prompts.
   - Implemented `AgentLoader` with 3-tier precedence (`built-in -> user-global (~/.flappycode/agents) -> project-local (.flappycode/agents)`), allowing custom project-specific agent definitions.

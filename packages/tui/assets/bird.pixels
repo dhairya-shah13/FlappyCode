@@ -1,0 +1,12 @@
+# Flappy Bird Sprite (Left, facing right)
+# Y = Body Yellow (#FFC72C)
+# W = Eye White (#FFFFFF)
+# K = Eye Pupil (#020B14)
+# O = Beak Orange (#FF7A2F)
+# B = Wing Blue (#0088CC)
+# . = Transparent
+...YYYYYY.....
+.YYYYYYWKYYYY.
+BBBBBYYYYYOOOO
+.BBBBBYYYYOOOO
+...YYYYYY.....

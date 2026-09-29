@@ -9,6 +9,7 @@ export const TUI_VERSION = '1.0.0';
 export * from './store.js';
 export * from './replay.js';
 export * from './app.js';
+export * from './banner/index.js';
 
 export interface RenderAppOptions {
   bus: EventBus;

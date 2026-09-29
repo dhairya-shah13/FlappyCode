@@ -1,0 +1,9 @@
+# FLAPPY CODE Pixel Map
+# Y = Flappy Yellow (#FFC72C)
+# C = Code Cyan (#00B7FF)
+# . = Transparent
+YYYYY.Y......YYYY..YYYY..YYYY..Y...Y...CCCC..CCCC..CCCC..CCCCC
+Y.....Y.....Y....Y.Y...Y.Y...Y..Y.Y...C.....C....C.C...C.C....
+YYYY..Y.....YYYYYY.YYYY..YYYY....Y....C.....C....C.C...C.CCCC.
+Y.....Y.....Y....Y.Y.....Y.......Y....C.....C....C.C...C.C....
+Y.....YYYYY.Y....Y.Y.....Y.......Y.....CCCC..CCCC..CCCC..CCCCC
