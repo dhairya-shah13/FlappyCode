@@ -1,9 +1,14 @@
 # FlappyCode — Context & State
 
-Last updated: 2026-09-29T12:55:00+05:30 (Task P1-A6)
+Last updated: 2026-09-29T13:01:00+05:30 (Task P1-D1)
 
 ## Current Repository State
-- **Status:** SQLite storage engine, schema v1, migrations, and repositories complete (Task P1-A6 complete, moving to P1-D1).
+- **Status:** Declarative agent definitions and agent runtime loop complete (Task P1-D1 complete, moving to P1-G2).
+- **Agent Definitions & Runtime Loop Delivered (`@flappycode/core`):**
+  - Authored 8 built-in specialist agent definitions in `packages/core/agents/*.md` (`planner`, `coder`, `reviewer`, `tester`, `file-finder`, `executor`, `analyst`, `general`) with YAML frontmatter specifying allowed tools, model bindings, fallback policies, and markdown system prompts.
+  - Implemented `AgentLoader` with 3-tier precedence (`built-in -> user-global (~/.flappycode/agents) -> project-local (.flappycode/agents)`), allowing custom project-specific agent definitions.
+  - Implemented `runAgent` runtime loop: streams model response, validates tool calls against agent permissions, invokes tool handlers, captures verbatim outputs, supports one-time automatic repair for malformed JSON, and respects cancellation abort signals.
+  - 19 unit tests in `@flappycode/core` passing.
 - **SQLite Storage Delivered (`@flappycode/storage`):**
   - Built-in `node:sqlite` (`DatabaseSync`) engine with WAL mode and foreign key enforcement per `[DEC-004]`.
   - Storage paths resolver supporting Windows (`%LOCALAPPDATA%\flappycode`), macOS, and Linux/XDG with `FLAPPYCODE_HOME` and `FLAPPYCODE_DB_PATH` overrides.

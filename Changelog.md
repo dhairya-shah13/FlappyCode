@@ -6,6 +6,12 @@ All notable changes to this project are documented here with timestamps and task
 
 ### [Unreleased]
 
+#### 2026-09-29T13:01:00+05:30 — Task P1-D1
+- Authored 8 built-in specialist agent definitions (`planner`, `coder`, `reviewer`, `tester`, `file-finder`, `executor`, `analyst`, `general`) with frontmatter metadata and markdown prompts.
+- Implemented `AgentLoader` with 3-tier precedence (`built-in -> user-global -> project-local`).
+- Implemented `runAgent` loop handling model streaming, tool permission gating, verbatim execution results, malformed JSON recovery, and cancellation signals.
+- Added comprehensive unit tests for agent loading, overriding, and multi-step tool execution.
+
 #### 2026-09-29T12:55:00+05:30 — Task P1-A6
 - Implemented SQLite storage engine using built-in `node:sqlite` (`DatabaseSync`) with WAL mode and foreign key enforcement per `[DEC-004]`.
 - Implemented cross-platform storage paths resolver supporting Windows `%LOCALAPPDATA%`, macOS, Linux, and custom environment overrides (`FLAPPYCODE_HOME`, `FLAPPYCODE_DB_PATH`).
