@@ -1,9 +1,14 @@
 # FlappyCode — Context & State
 
-Last updated: 2026-09-29T12:27:00+05:30 (Task P1-B1)
+Last updated: 2026-09-29T12:28:00+05:30 (Task P1-A3)
 
 ## Current Repository State
-- **Status:** Provider connector interface and mock harness complete (Task P1-B1 complete, moving to P1-A3).
+- **Status:** CI Matrix & Dependabot configured (Task P1-A3 complete, moving to P1-G1).
+- **CI Configuration:**
+  - Matrix across `{ubuntu-latest, macos-latest, windows-latest} × Node {20, 22}` running frozen-lockfile install, lint, typecheck, tests, and build.
+  - Smoke install job placeholder (`pack-smoke`) on 3 operating systems.
+  - Dependabot configured for weekly npm and github-actions updates.
+  - Note: Full GitHub Actions run results will be executed and confirmed upon remote push.
 - **Core invariant check:**
   - Engine is a library; CLI is a client.
   - Zero telemetry, local-first.

@@ -6,6 +6,11 @@ All notable changes to this project are documented here with timestamps and task
 
 ### [Unreleased]
 
+#### 2026-09-29T12:28:00+05:30 — Task P1-A3
+- Configured GitHub Actions matrix workflow across Windows, macOS, and Linux for Node 20 and 22.
+- Added `pack-smoke` job to test packaged tarball installation on 3 operating systems.
+- Added `.github/dependabot.yml` for automated weekly updates.
+
 #### 2026-09-29T12:27:00+05:30 — Task P1-B1
 - Implemented `ProviderConnector` interface, normalized LLM types (`CompletionRequest`, `CompletionChunk`, `Message`, `ToolCall`).
 - Created typed provider error classes (`AuthError`, `RateLimitError`, `ServerError`, `NetworkError`, `TimeoutError`, `MalformedResponseError`, `ModelNotFoundError`, `AbortedError`) and `redactSecrets` filter.
