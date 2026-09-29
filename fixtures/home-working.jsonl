@@ -1,6 +1,0 @@
-{"id":"evt-1","ts":1700000000000,"sessionId":"sess-working","type":"session.started","payload":{"sessionId":"sess-working","projectPath":"c:\\Projects\\FlappyCode"}}
-{"id":"evt-2","ts":1700000000100,"sessionId":"sess-working","type":"registry.updated","payload":{"providersCount":4,"freeModels":14,"rateLimitedFreeModels":9,"totalModels":320}}
-{"id":"evt-3","ts":1700000000200,"sessionId":"sess-working","type":"node.started","payload":{"runId":"run-w1","nodeId":"n1","agent":"file-finder","model":"groq/llama-3.3-70b"}}
-{"id":"evt-4","ts":1700000000300,"sessionId":"sess-working","type":"node.finished","payload":{"runId":"run-w1","nodeId":"n1","status":"completed"}}
-{"id":"evt-5","ts":1700000000400,"sessionId":"sess-working","type":"node.started","payload":{"runId":"run-w1","nodeId":"n2","agent":"coder","model":"openrouter/qwen3-coder:free"}}
-{"id":"evt-6","ts":1700000000500,"sessionId":"sess-working","type":"node.updated","payload":{"runId":"run-w1","nodeId":"n2","status":"working","delta":"Editing src/auth.ts","message":"Working… 3/7 nodes"}}
