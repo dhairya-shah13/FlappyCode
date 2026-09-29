@@ -31,7 +31,7 @@ Reading `design_mockup.png`, the home screen has five zones on a dark navy backg
 | **B. Banner** | Pixel-art wordmark **FLAPPY** (yellow) + **CODE** (cyan/blue), flanked by two pixel "flappy birds" (yellow body, white eye, orange beak, blue wing) with cyan speed-lines trailing outward. |
 | **C. Taglines** | Line 1 (white, bullet separated): `Multi-Provider • Multi-Agent • Free Models • One Assistant`. Line 2 (light blue): `Your connected providers. All the free models. One powerful coding agent.` |
 | **D. Input box** | Full-width, rounded cyan border, prompt glyph `>_`, placeholder `Type your coding request here...` in soft blue, blinking block/bar cursor. Box is ~3 lines tall to allow multi-line input. |
-| **E. Status bar** | Bottom, separated by cyan rules: left `🐦 FlappyCode v…`; centre `Providers: 4 connected │ Free models: 14 available` (numbers in green); right `⚡ Ready!` (green). |
+| **E. Status bar** | Bottom, separated by cyan rules: left `<o) FlappyCode v0.2`; centre `[📶] Providers: 4 connected │ Free models: 14 available` (numbers in green); right `⚡ Ready!` (green). |
 
 **Design notes / deviations we must decide:**
 1. The mockup shows `v0.2` — that is the *spec* version. In the product, this shows the real semver (`v0.1.0` at Phase 1 release). (PRD OQ-6)
@@ -66,40 +66,39 @@ Cursor blink; braille spinner (`⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏`) for running nod
 
 ```
 PS C:\FlappyCode> flappycode
-──────────────────────────────────────────────────────────────────────────────────────────────
 
-───────────▄██████████████▄
-───────▄████░░░░░░░░█▀────█▄
-──────██░░░░░░░░░░░█▀──────█▄
-─────██░░░░░░░░░░░█▀────────█▄
-────██░░░░░░░░░░░░█──────────██
-───██░░░░░░░░░░░░░█──────██──██
-──██░░░░░░░░░░░░░░█▄─────██──██
-─████████████░░░░░░██────────██
-██░░░░░░░░░░░██░░░░░█████████████
-██░░░░░░░░░░░██░░░░█▓▓▓▓▓▓▓▓▓▓▓▓▓█
-██░░░░░░░░░░░██░░░█▓▓▓▓▓▓▓▓▓▓▓▓▓▓█
-─▀███████████▒▒▒▒█▓▓▓███████████▀
-────██▒▒▒▒▒▒▒▒▒▒▒▒█▓▓▓▓▓▓▓▓▓▓▓▓█
-─────██▒▒▒▒▒▒▒▒▒▒▒▒██▓▓▓▓▓▓▓▓▓▓█
-──────█████▒▒▒▒▒▒▒▒▒▒██████████
-─────────▀███████████▀
+───────────▄██████████████▄                                                                        ▄██████████████▄───────────
+───────▄████░░░░░░░░█▀────█▄                                                                    ▄█────▀█░░░░░░░░████▄───────
+──────██░░░░░░░░░░░█▀──────█▄                                                                  ▄█──────▀█░░░░░░░░░░░██──────
+─────██░░░░░░░░░░░█▀────────█▄                                                                ▄█────────▀█░░░░░░░░░░░██─────
+────██░░░░░░░░░░░░█──────────██                                                              ██──────────█░░░░░░░░░░░░██────
+───██░░░░░░░░░░░░░█──────██──██     █████ █      ████  ████  ████  █   █   ████  ████  ████  █████     ██──██──────█░░░░░░░░░░░░░██───
+──██░░░░░░░░░░░░░░█▄─────██──██     █     █     █    █ █   █ █   █  █ █   █     █    █ █   █ █         ██──██─────▄█░░░░░░░░░░░░░░██──
+─████████████░░░░░░██────────██     ████  █     ██████ ████  ████    █    █     █    █ █   █ ████      ██────────██░░░░░░████████████─
+██░░░░░░░░░░░██░░░░░█████████████   █     █     █    █ █     █       █    █     █    █ █   █ █       █████████████░░░░░██░░░░░░░░░░░██
+██░░░░░░░░░░░██░░░░█▓▓▓▓▓▓▓▓▓▓▓▓▓█  █     █████ █    █ █     █       █     ████  ████  ████  █████  █▓▓▓▓▓▓▓▓▓▓▓▓▓█░░░░██░░░░░░░░░░░██
+██░░░░░░░░░░░██░░░█▓▓▓▓▓▓▓▓▓▓▓▓▓▓█  └─────── FLAPPY (yellow) ──────┘   └──────── CODE (cyan) ───────┘ █▓▓▓▓▓▓▓▓▓▓▓▓▓▓█░░░██░░░░░░░░░░░██
+─▀███████████▒▒▒▒█▓▓▓███████████▀                                                                ▀███████████▓▓▓█▒▒▒▒███████████▀─
+────██▒▒▒▒▒▒▒▒▒▒▒▒█▓▓▓▓▓▓▓▓▓▓▓▓█                                                                █▓▓▓▓▓▓▓▓▓▓▓▓█▒▒▒▒▒▒▒▒▒▒▒▒██────
+─────██▒▒▒▒▒▒▒▒▒▒▒▒██▓▓▓▓▓▓▓▓▓▓█                                                                █▓▓▓▓▓▓▓▓▓▓██▒▒▒▒▒▒▒▒▒▒▒▒██─────
+──────█████▒▒▒▒▒▒▒▒▒▒██████████                                                                ██████████▒▒▒▒▒▒▒▒▒▒█████──────
+─────────▀███████████▀                                                                            ▀███████████▀─────────
 
-        Multi-Provider  •  Multi-Agent  •  Free Models  •  One Assistant
-      Your connected providers. All the free models. One powerful coding agent.
+                             Multi-Provider  •  Multi-Agent  •  Free Models  •  One Assistant
+                           Your connected providers. All the free models. One powerful coding agent.
 
-╭────────────────────────────────────────────────────────────────────────────────────────────╮
-│ >_  Type your coding request here...▌                                                      │
-│                                                                                            │
-╰────────────────────────────────────────────────────────────────────────────────────────────╯
-
+╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ >_  Type your coding request here...                                                                                             │
+│                                                                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
 
 
 
-──────────────────────────────────────────────────────────────────────────────────────────────
- 🐦 FlappyCode v0.1.0      Providers: 4 connected │ Free models: 14 available      ⚡ Ready!
-──────────────────────────────────────────────────────────────────────────────────────────────
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ <o) FlappyCode v0.2             [📶] Providers: 4 connected │ Free models: 14 available                                ⚡ Ready!
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 ```
 
 **Banner asset spec**
