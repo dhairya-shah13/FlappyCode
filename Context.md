@@ -1,9 +1,17 @@
 # FlappyCode — Context & State
 
-Last updated: 2026-09-29T12:50:00+05:30 (Task P1-A4)
+Last updated: 2026-09-29T12:55:00+05:30 (Task P1-A6)
 
 ## Current Repository State
-- **Status:** Bundling, CLI packaging, anti-publish guard, and smoke install script complete (Task P1-A4 complete, moving to P1-A6).
+- **Status:** SQLite storage engine, schema v1, migrations, and repositories complete (Task P1-A6 complete, moving to P1-D1).
+- **SQLite Storage Delivered (`@flappycode/storage`):**
+  - Built-in `node:sqlite` (`DatabaseSync`) engine with WAL mode and foreign key enforcement per `[DEC-004]`.
+  - Storage paths resolver supporting Windows (`%LOCALAPPDATA%\flappycode`), macOS, and Linux/XDG with `FLAPPYCODE_HOME` and `FLAPPYCODE_DB_PATH` overrides.
+  - Migration runner with `001_init.sql` implementing full SRS §6.1 local schema: `provider`, `model`, `model_override`, `agent_definition`, `session`, `message`, `task_run`, `task_node`, `tool_call_log`, `usage_local`, and `project_memory`.
+  - Repositories: `ProviderRepo` (CRUD + enable toggle), `ModelRepo` (upsert + queries by tier/provider + model overrides + cascading delete), `SessionRepo`, `MessageRepo`, `UsageRepo` (upsert accumulation for local token and request stats), `ProjectMemoryRepo`.
+  - `FlappyStorage` facade wrapping connection lifecycle and all repositories.
+  - Mandatory privacy test verifying `usage_local` schema is strictly limited to numeric, ID, and date metrics without prompt text, file paths, or secrets.
+  - 11 unit and privacy tests in `@flappycode/storage` passing.
 - **Packaging & CLI Distribution Delivered (`packages/cli` & `flappycode`):**
   - Configured `tsup` bundling with `noExternal: [/^@flappycode\//]` inlining all internal workspace packages into a clean standalone ESM `dist/cli.js` with shebang `#!/usr/bin/env node`.
   - Added `scripts/copy-cli-assets.mjs` ensuring `rules/`, `LICENSE`, and `README.md` are copied into the package before packaging.

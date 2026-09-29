@@ -1,0 +1,123 @@
+export const MIGRATION_001_INIT = `
+CREATE TABLE IF NOT EXISTS _migrations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT UNIQUE NOT NULL,
+  applied_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS provider (
+  id TEXT PRIMARY KEY,
+  type TEXT NOT NULL,
+  display_name TEXT NOT NULL,
+  base_url TEXT,
+  auth_ref TEXT,
+  enabled INTEGER NOT NULL DEFAULT 1,
+  data_use_policy TEXT,
+  max_concurrency INTEGER NOT NULL DEFAULT 4,
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS model (
+  provider_id TEXT NOT NULL,
+  model_id TEXT NOT NULL,
+  tier TEXT NOT NULL CHECK(tier IN ('free','rate_limited_free','paid','disabled','unavailable')),
+  tier_source TEXT NOT NULL,
+  context_length INTEGER NOT NULL,
+  modality TEXT NOT NULL,
+  supports_tools INTEGER NOT NULL DEFAULT 0,
+  supports_vision INTEGER NOT NULL DEFAULT 0,
+  tool_probe_passed INTEGER DEFAULT NULL,
+  price_in REAL DEFAULT 0.0,
+  price_out REAL DEFAULT 0.0,
+  avg_latency_ms INTEGER DEFAULT 0,
+  last_validated_at INTEGER NOT NULL,
+  PRIMARY KEY(provider_id, model_id),
+  FOREIGN KEY(provider_id) REFERENCES provider(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS model_override (
+  provider_id TEXT NOT NULL,
+  model_id TEXT NOT NULL,
+  tier TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY(provider_id, model_id)
+);
+
+CREATE TABLE IF NOT EXISTS agent_definition (
+  name TEXT PRIMARY KEY,
+  system_prompt TEXT NOT NULL,
+  allowed_tools TEXT NOT NULL,
+  preferred_model_ref TEXT,
+  fallback_policy TEXT
+);
+
+CREATE TABLE IF NOT EXISTS session (
+  id TEXT PRIMARY KEY,
+  project_path TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  summary TEXT
+);
+
+CREATE TABLE IF NOT EXISTS message (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id TEXT NOT NULL,
+  role TEXT NOT NULL,
+  content TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  FOREIGN KEY(session_id) REFERENCES session(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS task_run (
+  id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  prompt TEXT NOT NULL,
+  plan_approved_at INTEGER,
+  status TEXT NOT NULL,
+  FOREIGN KEY(session_id) REFERENCES session(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS task_node (
+  id TEXT PRIMARY KEY,
+  run_id TEXT NOT NULL,
+  agent TEXT NOT NULL,
+  description TEXT NOT NULL,
+  status TEXT NOT NULL,
+  depends_on TEXT NOT NULL,
+  model_used TEXT,
+  substitutions TEXT,
+  started_at INTEGER,
+  ended_at INTEGER,
+  FOREIGN KEY(run_id) REFERENCES task_run(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS tool_call_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  node_id TEXT NOT NULL,
+  tool TEXT NOT NULL,
+  args TEXT NOT NULL,
+  result_summary TEXT,
+  approved_by_user INTEGER NOT NULL,
+  ts INTEGER NOT NULL,
+  FOREIGN KEY(node_id) REFERENCES task_node(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS usage_local (
+  provider_id TEXT NOT NULL,
+  model_id TEXT NOT NULL,
+  date TEXT NOT NULL,
+  requests INTEGER NOT NULL DEFAULT 0,
+  tokens_in INTEGER NOT NULL DEFAULT 0,
+  tokens_out INTEGER NOT NULL DEFAULT 0,
+  active_minutes INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY(provider_id, model_id, date)
+);
+
+CREATE TABLE IF NOT EXISTS project_memory (
+  project_path TEXT NOT NULL,
+  key TEXT NOT NULL,
+  value TEXT NOT NULL,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY(project_path, key)
+);
+`;

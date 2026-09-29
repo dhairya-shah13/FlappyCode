@@ -6,6 +6,13 @@ All notable changes to this project are documented here with timestamps and task
 
 ### [Unreleased]
 
+#### 2026-09-29T12:55:00+05:30 — Task P1-A6
+- Implemented SQLite storage engine using built-in `node:sqlite` (`DatabaseSync`) with WAL mode and foreign key enforcement per `[DEC-004]`.
+- Implemented cross-platform storage paths resolver supporting Windows `%LOCALAPPDATA%`, macOS, Linux, and custom environment overrides (`FLAPPYCODE_HOME`, `FLAPPYCODE_DB_PATH`).
+- Implemented migration runner and `001_init.sql` schema v1 (provider, model, model_override, agent_definition, session, message, task_run, task_node, tool_call_log, usage_local, project_memory).
+- Created repositories for providers, models, sessions, messages, local usage metrics, and project memory.
+- Added comprehensive unit tests and verified the mandatory privacy invariant on `usage_local`.
+
 #### 2026-09-29T12:50:00+05:30 — Task P1-A4
 - Configured `tsup` bundling with `noExternal: [/^@flappycode\//]` producing self-contained executable `dist/cli.js`.
 - Implemented `scripts/copy-cli-assets.mjs` for cross-platform bundling of rules and legal assets.
