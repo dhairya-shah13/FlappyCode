@@ -1,0 +1,7 @@
+{"id":"evt-1","ts":1700000000000,"sessionId":"sess-ready","type":"session.started","payload":{"sessionId":"sess-ready","projectPath":"c:\\Projects\\FlappyCode"}}
+{"id":"evt-2","ts":1700000000100,"sessionId":"sess-ready","type":"provider.status","payload":{"providerId":"openrouter","status":"ok","message":"Connected"}}
+{"id":"evt-3","ts":1700000000200,"sessionId":"sess-ready","type":"provider.status","payload":{"providerId":"groq","status":"ok","message":"Connected"}}
+{"id":"evt-4","ts":1700000000300,"sessionId":"sess-ready","type":"provider.status","payload":{"providerId":"google","status":"ok","message":"Connected"}}
+{"id":"evt-5","ts":1700000000400,"sessionId":"sess-ready","type":"provider.status","payload":{"providerId":"ollama","status":"ok","message":"Connected"}}
+{"id":"evt-6","ts":1700000000500,"sessionId":"sess-ready","type":"registry.updated","payload":{"providersCount":4,"freeModels":14,"rateLimitedFreeModels":9,"totalModels":320}}
+{"id":"evt-7","ts":1700000000600,"sessionId":"sess-ready","type":"log","payload":{"level":"info","message":"Ready! 4 providers connected with 14 free models available."}}

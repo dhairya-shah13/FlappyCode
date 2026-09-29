@@ -1,9 +1,16 @@
 # FlappyCode — Context & State
 
-Last updated: 2026-09-29T12:28:00+05:30 (Task P1-A3)
+Last updated: 2026-09-29T12:32:00+05:30 (Task P1-G1)
 
 ## Current Repository State
-- **Status:** CI Matrix & Dependabot configured (Task P1-A3 complete, moving to P1-G1).
+- **Status:** Ink TUI skeleton, reactive store, and fixture replay complete (Task P1-G1 complete, moving to P1-B2).
+- **TUI & Replay Delivered (`@flappycode/tui`):**
+  - Reactive `UIStore` using Zustand vanilla reducing engine events (`session.started`, `registry.updated`, `node.started/updated/finished`, `approval.requested`, `pool.exhausted`, etc.).
+  - Pure function React/Ink `App` component with header, input box, active tasks view, and responsive status bar.
+  - Event fixture replay utility `replay(bus, file, { speed })`.
+  - Fixtures: `fixtures/home-ready.jsonl` (4 providers, 14 free models), `fixtures/home-empty.jsonl` (0 providers), `fixtures/home-working.jsonl` (working 3/7).
+  - Non-TTY guard exiting code 2, Ctrl+C handling.
+  - Snapshot & integration tests via `ink-testing-library`.
 - **CI Configuration:**
   - Matrix across `{ubuntu-latest, macos-latest, windows-latest} × Node {20, 22}` running frozen-lockfile install, lint, typecheck, tests, and build.
   - Smoke install job placeholder (`pack-smoke`) on 3 operating systems.

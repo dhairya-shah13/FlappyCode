@@ -6,6 +6,12 @@ All notable changes to this project are documented here with timestamps and task
 
 ### [Unreleased]
 
+#### 2026-09-29T12:32:00+05:30 — Task P1-G1
+- Built React Ink TUI skeleton with reactive `UIStore` subscribing to engine `EventBus`.
+- Implemented `replay` utility for fixture-driven UI execution.
+- Created standard test fixtures: `home-ready.jsonl`, `home-empty.jsonl`, and `home-working.jsonl`.
+- Added snapshot and store reducer tests with `ink-testing-library`.
+
 #### 2026-09-29T12:28:00+05:30 — Task P1-A3
 - Configured GitHub Actions matrix workflow across Windows, macOS, and Linux for Node 20 and 22.
 - Added `pack-smoke` job to test packaged tarball installation on 3 operating systems.
