@@ -1,0 +1,7 @@
+packages:
+  - 'packages/*'
+
+allowBuilds:
+  esbuild: true
+  '@napi-rs/keyring': true
+  better-sqlite3: false

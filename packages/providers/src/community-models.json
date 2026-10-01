@@ -1,0 +1,117 @@
+{
+  "version": "2026.10.01",
+  "models": {
+    "openrouter/qwen/qwen-2.5-coder-32b-instruct:free": {
+      "tier": "rate_limited_free",
+      "context_length": 131072,
+      "supports_tools": true,
+      "supports_vision": false,
+      "data_use_policy": "trains_on_prompts"
+    },
+    "openrouter/meta-llama/llama-3.3-70b-instruct:free": {
+      "tier": "rate_limited_free",
+      "context_length": 131072,
+      "supports_tools": true,
+      "supports_vision": false,
+      "data_use_policy": "trains_on_prompts"
+    },
+    "openrouter/google/gemini-2.0-flash-exp:free": {
+      "tier": "free",
+      "context_length": 1048576,
+      "supports_tools": true,
+      "supports_vision": true,
+      "data_use_policy": "trains_on_prompts"
+    },
+    "openrouter/deepseek/deepseek-chat:free": {
+      "tier": "rate_limited_free",
+      "context_length": 65536,
+      "supports_tools": true,
+      "supports_vision": false,
+      "data_use_policy": "trains_on_prompts"
+    },
+    "groq/llama-3.3-70b-versatile": {
+      "tier": "rate_limited_free",
+      "context_length": 131072,
+      "supports_tools": true,
+      "supports_vision": false,
+      "data_use_policy": "no_training"
+    },
+    "groq/llama-3.1-8b-instant": {
+      "tier": "rate_limited_free",
+      "context_length": 131072,
+      "supports_tools": true,
+      "supports_vision": false,
+      "data_use_policy": "no_training"
+    },
+    "groq/qwen-2.5-coder-32b": {
+      "tier": "rate_limited_free",
+      "context_length": 32768,
+      "supports_tools": true,
+      "supports_vision": false,
+      "data_use_policy": "no_training"
+    },
+    "groq/openai/gpt-oss-120b": {
+      "tier": "rate_limited_free",
+      "context_length": 131072,
+      "supports_tools": true,
+      "supports_vision": false,
+      "data_use_policy": "no_training"
+    },
+    "groq/openai/gpt-oss-20b": {
+      "tier": "rate_limited_free",
+      "context_length": 131072,
+      "supports_tools": true,
+      "supports_vision": false,
+      "data_use_policy": "no_training"
+    },
+    "groq/qwen/qwen3.8-27b": {
+      "tier": "rate_limited_free",
+      "context_length": 131072,
+      "supports_tools": true,
+      "supports_vision": false,
+      "data_use_policy": "no_training"
+    },
+    "groq/allam-2-7b": {
+      "tier": "rate_limited_free",
+      "context_length": 4096,
+      "supports_tools": false,
+      "supports_vision": false,
+      "data_use_policy": "no_training"
+    },
+    "google/gemini-1.5-flash": {
+      "tier": "rate_limited_free",
+      "context_length": 1048576,
+      "supports_tools": true,
+      "supports_vision": true,
+      "data_use_policy": "trains_on_prompts"
+    },
+    "google/gemini-2.0-flash": {
+      "tier": "rate_limited_free",
+      "context_length": 1048576,
+      "supports_tools": true,
+      "supports_vision": true,
+      "data_use_policy": "trains_on_prompts"
+    },
+    "anthropic/claude-3-5-sonnet-20241022": {
+      "tier": "paid",
+      "context_length": 200000,
+      "supports_tools": true,
+      "supports_vision": true,
+      "data_use_policy": "no_training"
+    },
+    "openai/gpt-4o": {
+      "tier": "paid",
+      "context_length": 128000,
+      "supports_tools": true,
+      "supports_vision": true,
+      "data_use_policy": "no_training"
+    },
+    "openai/gpt-4o-mini": {
+      "tier": "paid",
+      "context_length": 128000,
+      "supports_tools": true,
+      "supports_vision": true,
+      "data_use_policy": "no_training"
+    }
+  }
+}

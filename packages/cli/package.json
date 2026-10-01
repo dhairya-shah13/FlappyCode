@@ -1,0 +1,29 @@
+{
+  "name": "flappycode",
+  "version": "0.1.0",
+  "description": "Multi-provider, multi-agent free model aggregator and coding assistant",
+  "type": "module",
+  "bin": {
+    "flappycode": "dist/cli.js"
+  },
+  "main": "dist/cli.js",
+  "types": "dist/cli.d.ts",
+  "scripts": {
+    "build": "tsup src/cli.ts --format esm",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@flappycode/core": "workspace:*",
+    "@flappycode/protocol": "workspace:*",
+    "@flappycode/providers": "workspace:*",
+    "@flappycode/server": "workspace:*",
+    "@flappycode/storage": "workspace:*",
+    "@flappycode/tui": "workspace:*",
+    "commander": "^12.1.0"
+  },
+  "devDependencies": {
+    "rimraf": "^6.0.1",
+    "tsup": "^8.3.5",
+    "typescript": "^5.6.3"
+  }
+}

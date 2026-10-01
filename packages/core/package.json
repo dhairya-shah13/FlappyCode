@@ -1,0 +1,23 @@
+{
+  "name": "@flappycode/core",
+  "version": "0.1.0",
+  "description": "Core orchestration engine: registry, router, flappyauto, agents, rules, and root-jailed tools",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@flappycode/protocol": "workspace:*",
+    "@flappycode/providers": "workspace:*",
+    "@flappycode/storage": "workspace:*",
+    "diff": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/diff": "^5.2.3",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.3.5",
+    "typescript": "^5.6.3"
+  }
+}

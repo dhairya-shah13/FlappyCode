@@ -1,0 +1,20 @@
+{
+  "name": "@flappycode/tui",
+  "version": "0.1.0",
+  "description": "Terminal User Interface for FlappyCode matching CLIDesign.md specifications",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@flappycode/core": "workspace:*",
+    "@flappycode/protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "rimraf": "^6.0.1",
+    "tsup": "^8.3.5",
+    "typescript": "^5.6.3"
+  }
+}

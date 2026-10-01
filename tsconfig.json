@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@flappycode/protocol": ["packages/protocol/src"],
+      "@flappycode/storage": ["packages/storage/src"],
+      "@flappycode/providers": ["packages/providers/src"],
+      "@flappycode/core": ["packages/core/src"],
+      "@flappycode/tui": ["packages/tui/src"],
+      "@flappycode/server": ["packages/server/src"]
+    }
+  },
+  "include": [
+    "packages/*/src/**/*",
+    "tests/**/*"
+  ]
+}
