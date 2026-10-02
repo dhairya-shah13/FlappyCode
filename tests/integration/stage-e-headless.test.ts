@@ -258,4 +258,64 @@ describe('Stage E: Headless CLI Correctness (GAP-024, GAP-051, GAP-056)', () => 
     // In Windows or POSIX, child killed or handling SIGINT exits with 130
     expect([130, null]).toContain(exitCode);
   });
+
+  // ---------------------------------------------------------------------------
+  // Exit Code 1: Operational / Domain Errors
+  // ---------------------------------------------------------------------------
+
+  it('exits with code 1 when agents show is called for an unknown agent', () => {
+    const res = spawnSync(process.execPath, [CLI_PATH, 'agents', 'show', 'unknown-agent-xyz'], {
+      cwd: tempDir,
+      env: testEnv,
+      encoding: 'utf8',
+    });
+    expect(res.status).toBe(1);
+    expect(res.stderr).toContain('not found');
+  });
+
+  it('exits with code 1 when providers test is called for an unknown provider', () => {
+    const res = spawnSync(process.execPath, [CLI_PATH, 'providers', 'test', 'nonexistent-provider-xyz'], {
+      cwd: tempDir,
+      env: testEnv,
+      encoding: 'utf8',
+    });
+    expect(res.status).toBe(1);
+    expect(res.stderr).toContain('not found');
+  });
+
+  // ---------------------------------------------------------------------------
+  // Exit Code 0: Info and Health Commands
+  // ---------------------------------------------------------------------------
+
+  it('exits with code 0 on --version', () => {
+    const res = spawnSync(process.execPath, [CLI_PATH, '--version'], {
+      cwd: tempDir,
+      env: testEnv,
+      encoding: 'utf8',
+    });
+    expect(res.status).toBe(0);
+    expect(res.stdout).toMatch(/\d+\.\d+\.\d+/);
+  });
+
+  it('exits with code 0 on --help', () => {
+    const res = spawnSync(process.execPath, [CLI_PATH, '--help'], {
+      cwd: tempDir,
+      env: testEnv,
+      encoding: 'utf8',
+    });
+    expect(res.status).toBe(0);
+    expect(res.stdout).toContain('flappycode');
+    expect(res.stdout).toContain('Commands:');
+  });
+
+  it('exits with code 0 on doctor command', () => {
+    const res = spawnSync(process.execPath, [CLI_PATH, 'doctor'], {
+      cwd: tempDir,
+      env: testEnv,
+      encoding: 'utf8',
+    });
+    expect(res.status).toBe(0);
+    expect(res.stdout).toContain('Diagnostics');
+  });
 });
+

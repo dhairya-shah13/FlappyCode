@@ -9,8 +9,9 @@ describe('GAP-019 — Search Tool for Agents', () => {
     expect(BUILTIN_AGENTS['Coder'].allowed_tools).toContain('search');
   });
 
-  it('Codebase-Analyst agent has search in allowed_tools', () => {
+  it('Codebase-Analyst agent has search and semantic_search in allowed_tools', () => {
     expect(BUILTIN_AGENTS['Codebase-Analyst'].allowed_tools).toContain('search');
+    expect(BUILTIN_AGENTS['Codebase-Analyst'].allowed_tools).toContain('semantic_search');
   });
 
   it('File-Finder agent has search in allowed_tools', () => {

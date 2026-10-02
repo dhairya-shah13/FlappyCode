@@ -40,7 +40,7 @@ describe('GAP-057: Package Asset Bundling & Install Verification Smoke Test', ()
     }
   });
 
-  it('runs npm pack --dry-run and verifies package manifest includes assets and dist', () => {
+  it('runs npm pack --dry-run and verifies package manifest includes assets, dist, and LICENSE', () => {
     const raw = execSync('npm pack --dry-run --json', { cwd: cliDir, encoding: 'utf8' });
     const parsed = JSON.parse(raw);
     const tarball = parsed[0];
@@ -51,6 +51,25 @@ describe('GAP-057: Package Asset Bundling & Install Verification Smoke Test', ()
     expect(files.some((p: string) => p.startsWith('dist/'))).toBe(true);
     expect(files.some((p: string) => p === 'assets/RULES.md')).toBe(true);
     expect(files.some((p: string) => p.startsWith('assets/rules/categories/'))).toBe(true);
+    expect(files.some((p: string) => p === 'LICENSE')).toBe(true);
+  });
+
+  it('validates community-catalog.json conforms to CommunityCatalogSchema without quality grades', () => {
+    const catalogPath = path.join(cliDir, 'assets/community-catalog.json');
+    expect(fs.existsSync(catalogPath)).toBe(true);
+    const raw = fs.readFileSync(catalogPath, 'utf8');
+    const data = JSON.parse(raw);
+
+    // Validate using Zod schema
+    const { CommunityCatalogSchema } = require('@flappycode/protocol');
+    const parsed = CommunityCatalogSchema.safeParse(data);
+    expect(parsed.success).toBe(true);
+
+    // Verify no quality grades exist
+    const rawText = raw.toLowerCase();
+    expect(rawText).not.toContain('"flagship"');
+    expect(rawText).not.toContain('"strong"');
+    expect(rawText).not.toContain('"balanced"');
   });
 
   it('executes flappycode binary --version and --help without errors', () => {
