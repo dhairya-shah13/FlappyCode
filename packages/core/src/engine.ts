@@ -248,7 +248,7 @@ export class FlappyEngine {
     }
 
     // B6/GAP-039: validate credentials before persisting/activating.
-    const connector = this.registry.getConnector(cfg.type);
+    const connector = this.registry.getConnector(cfg.id);
     let resolvedKey: string | undefined;
     if (cfg.api_key_ref) {
       resolvedKey = (await this.secretStore.resolveSecretRef(cfg.api_key_ref)) || undefined;
@@ -293,6 +293,63 @@ export class FlappyEngine {
 
   public getModels(): Model[] {
     return this.registry.getModels();
+  }
+
+  /**
+   * GAP-006 (FR-MOD-005): resolve a user-supplied model reference to a
+   * registered model. Accepts `provider/model-id` or a bare model id when it
+   * is unambiguous. Throws a clear error for unknown/ambiguous references.
+   */
+  private resolveModelRef(modelRef: string): { provider_id: string; model_id: string } {
+    const models = this.registry.getModels();
+    const [maybeProvider, ...rest] = modelRef.split('/');
+    if (rest.length > 0) {
+      const provider_id = maybeProvider;
+      const model_id = rest.join('/');
+      const hit = models.find((m) => m.provider_id === provider_id && m.model_id === model_id);
+      if (!hit) {
+        throw new Error(
+          `Unknown model '${modelRef}'. Run 'flappycode models' to list registered models.`
+        );
+      }
+      return { provider_id: hit.provider_id, model_id: hit.model_id };
+    }
+    const matches = models.filter((m) => m.model_id === modelRef);
+    if (matches.length === 0) {
+      throw new Error(
+        `Unknown model '${modelRef}'. Run 'flappycode models' to list registered models.`
+      );
+    }
+    if (matches.length > 1) {
+      const providers = matches.map((m) => m.provider_id).join(', ');
+      throw new Error(
+        `Model id '${modelRef}' is ambiguous across providers (${providers}). Use '<provider>/<model-id>'.`
+      );
+    }
+    return { provider_id: matches[0].provider_id, model_id: matches[0].model_id };
+  }
+
+  /**
+   * GAP-006 (FR-MOD-005): force-tag a registered model to a user tier.
+   * The override persists to SQLite through the registry/repository API and
+   * survives provider refresh; classifier precedence is unchanged.
+   * Note: tagging a model `free` is an explicit user statement about routing
+   * eligibility — it never grants paid usage (PaidGate is unaffected).
+   */
+  public setModelOverride(
+    modelRef: string,
+    tier: 'free' | 'paid' | 'disabled'
+  ): { provider_id: string; model_id: string; tier: Model['tier'] } {
+    const target = this.resolveModelRef(modelRef);
+    this.registry.setOverride(target.provider_id, target.model_id, tier);
+    return { ...target, tier };
+  }
+
+  /** GAP-006: remove a user tier override, restoring inferred classification. */
+  public deleteModelOverride(modelRef: string): { provider_id: string; model_id: string } {
+    const target = this.resolveModelRef(modelRef);
+    this.registry.deleteOverride(target.provider_id, target.model_id);
+    return target;
   }
 
   // ---------------------------------------------------------------------------

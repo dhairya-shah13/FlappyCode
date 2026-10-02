@@ -82,8 +82,27 @@ export const ResolvePoolExhaustedCommandSchema = z.object({
   run_id: z.string(),
   action: z.enum(['authorize_paid', 'add_free_provider', 'cancel']),
   paid_model_id: z.string().optional(),
+  /**
+   * Explicit final confirmation for the `authorize_paid` action. The engine
+   * never issues a PaidGrant unless this is literally `true` — selecting the
+   * action alone is not sufficient (FR-RTE-006 / GAP-002).
+   */
+  confirm: z.boolean().optional(),
 });
 export type ResolvePoolExhaustedCommand = z.infer<typeof ResolvePoolExhaustedCommandSchema>;
+
+export const SetModelOverrideCommandSchema = z.object({
+  type: z.literal('setModelOverride'),
+  model_id: z.string(),
+  tier: z.enum(['free', 'paid', 'disabled']),
+});
+export type SetModelOverrideCommand = z.infer<typeof SetModelOverrideCommandSchema>;
+
+export const DeleteModelOverrideCommandSchema = z.object({
+  type: z.literal('deleteModelOverride'),
+  model_id: z.string(),
+});
+export type DeleteModelOverrideCommand = z.infer<typeof DeleteModelOverrideCommandSchema>;
 
 export const CommandSchema = z.discriminatedUnion('type', [
   SubmitPromptCommandSchema,
@@ -98,5 +117,8 @@ export const CommandSchema = z.discriminatedUnion('type', [
   RefreshProvidersCommandSchema,
   PinModelCommandSchema,
   ResolvePoolExhaustedCommandSchema,
+  SetModelOverrideCommandSchema,
+  DeleteModelOverrideCommandSchema,
 ]);
 export type Command = z.infer<typeof CommandSchema>;
+

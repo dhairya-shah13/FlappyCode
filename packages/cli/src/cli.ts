@@ -84,7 +84,7 @@ program.action(async () => {
           cleanup();
           process.exit(0);
         }
-        if (key && (key.name === 'return' || key.name === 'enter') || str === 'y' || str === 'Y') {
+        if ((key && (key.name === 'return' || key.name === 'enter')) || str === 'y' || str === 'Y') {
           process.stdin.off('keypress', onKey);
           resolve('approve');
           return;
@@ -102,6 +102,221 @@ program.action(async () => {
       };
       process.stdin.on('keypress', onKey);
     });
+  };
+
+  /**
+   * Interactive provider-add flow (prompts + engine.addProvider), shared by
+   * the `/providers add` slash command and pool-exhaustion action (b).
+   * Screen management stays with the callers; returns true on success.
+   */
+  const addProviderFlow = async (): Promise<boolean> => {
+    console.log(Palette.bold('\nConnect a Provider to FlappyCode'));
+    console.log(Palette.subtle('Supported types: openrouter, groq, ollama, ollama-cloud, google, anthropic, openai-compatible\n'));
+
+    const type = await promptSingleLine('Provider type (e.g. openrouter / ollama / groq / google): ');
+    if (!type.trim()) {
+      console.log(Palette.yellow('Cancelled.'));
+      return false;
+    }
+
+    const name = await promptSingleLine(`Display name [default: ${type.trim()}]: `);
+    const displayName = name.trim() || type.trim();
+
+    let baseUrl: string | undefined;
+    if (type.trim().toLowerCase() === 'ollama') {
+      const urlInput = await promptSingleLine('Ollama URL [default: http://localhost:11434]: ');
+      baseUrl = urlInput.trim() || 'http://localhost:11434';
+    } else if (type.trim().toLowerCase() === 'ollama-cloud') {
+      const urlInput = await promptSingleLine('Ollama Cloud URL [default: https://ollama.com]: ');
+      baseUrl = urlInput.trim() || undefined;
+    } else if (type.trim().toLowerCase() === 'openai-compatible') {
+      baseUrl = await promptSingleLine('Base URL (e.g. http://localhost:1234/v1): ');
+    }
+
+    let key: string | undefined;
+    if (type.trim().toLowerCase() !== 'ollama') {
+      key = await promptSingleLine('API key: ');
+    }
+
+    const id = displayName.toLowerCase().replace(/\s+/g, '-');
+    const cfg = {
+      id,
+      type: type.trim().toLowerCase(),
+      display_name: displayName,
+      base_url: baseUrl,
+      enabled: true,
+      max_concurrency: 4,
+      data_use_policy: 'unknown' as const,
+      created_at: Date.now(),
+    };
+
+    try {
+      console.log(`\nConnecting and discovering models for '${displayName}'...`);
+      const models = await engine.addProvider(cfg, key?.trim());
+      const freeCount = models.filter((m) => m.tier === 'free' || m.tier === 'rate_limited_free').length;
+      console.log(
+        Palette.ok(
+          `✔ Successfully connected '${displayName}': discovered ${models.length} models (${freeCount} free/rate-limited-free)`
+        )
+      );
+      return true;
+    } catch (err: any) {
+      console.log(Palette.error(`✖ Failed to connect provider: ${err.message}`));
+      return false;
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // GAP-002: interactive pool-exhaustion notice (event → UI → command).
+  // The TUI only translates: it renders the engine's paused state, collects
+  // the user's choice, and calls engine.resolvePoolExhausted. All business
+  // logic (grants, refresh, resume) stays in the engine.
+  // ---------------------------------------------------------------------------
+
+  type PoolChoice = 'authorize_paid' | 'add_free_provider' | 'keep_paused' | 'cancel';
+
+  const promptPoolChoice = (): Promise<PoolChoice> => {
+    return new Promise((resolve) => {
+      if (!process.stdin.isTTY) {
+        resolve('keep_paused');
+        return;
+      }
+      process.stdin.setRawMode(true);
+      process.stdin.resume();
+      const onKey = (str: string, key: any) => {
+        if (key?.ctrl && (key?.name === 'c' || key?.name === 'd')) {
+          process.stdin.off('keypress', onKey);
+          process.stdin.setRawMode(false);
+          process.exit(0);
+        }
+        if (str === '1') {
+          process.stdin.off('keypress', onKey);
+          resolve('authorize_paid');
+        } else if (str === '2') {
+          process.stdin.off('keypress', onKey);
+          resolve('add_free_provider');
+        } else if (str === 'c' || str === 'C') {
+          process.stdin.off('keypress', onKey);
+          resolve('cancel');
+        } else if (key?.name === 'escape') {
+          process.stdin.off('keypress', onKey);
+          resolve('keep_paused');
+        }
+      };
+      process.stdin.on('keypress', onKey);
+    });
+  };
+
+  /** Final explicit confirmation before any PaidGrant — selecting menu item 1 is NOT enough. */
+  const promptPaidConfirm = (targetModelId: string): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if (!process.stdin.isTTY) {
+        resolve(false);
+        return;
+      }
+      process.stdin.setRawMode(true);
+      process.stdin.resume();
+      const onKey = (str: string, key: any) => {
+        if (key?.ctrl && (key?.name === 'c' || key?.name === 'd')) {
+          process.stdin.off('keypress', onKey);
+          process.stdin.setRawMode(false);
+          process.exit(0);
+        }
+        if (str === 'y' || str === 'Y' || key?.name === 'return' || key?.name === 'enter') {
+          process.stdin.off('keypress', onKey);
+          resolve(true);
+        } else if (str === 'n' || str === 'N' || str === 'q' || str === 'Q' || key?.name === 'escape') {
+          process.stdin.off('keypress', onKey);
+          resolve(false);
+        }
+      };
+      process.stdin.on('keypress', onKey);
+    });
+  };
+
+  /**
+   * Render PoolExhaustedScreen and drive the user's choice back into
+   * `engine.resolvePoolExhausted`. Loops until the engine accepts a
+   * resolution or the user keeps the run paused.
+   */
+  const handlePoolExhaustedInteractive = async (
+    runId: string
+  ): Promise<
+    | { status: 'resumed' }
+    | { status: 'replanned'; plan: Awaited<ReturnType<typeof engine.submitPrompt>> }
+    | { status: 'paused' }
+    | { status: 'cancelled' }
+  > => {
+    for (;;) {
+      process.stdout.write('\x1b[2J\x1b[H');
+      console.log(
+        PoolExhaustedScreen.render(engine.providerRepo.listEnabled().length, getWidth())
+      );
+      console.log(
+        Palette.bold('  [1] Add credit / recharge a paid-capable provider    [2] Connect another free-tier provider    [c] Cancel    [Esc] Keep paused')
+      );
+
+      const choice = await promptPoolChoice();
+      if (choice === 'cancel') {
+        await engine.resolvePoolExhausted(runId, 'cancel');
+        console.log(Palette.yellow(`\n✖ Task ${runId} cancelled.`));
+        return { status: 'cancelled' };
+      }
+      if (choice === 'keep_paused') {
+        console.log(Palette.yellow(`\n⏸ Task ${runId} remains paused. No resolution was applied.`));
+        return { status: 'paused' };
+      }
+
+      if (choice === 'authorize_paid') {
+        // Show WHICH paid models the grant would target, then require a
+        // second, explicit confirmation. The engine issues the PaidGrant.
+        const paidModels = engine.getModels().filter((m) => m.tier === 'paid');
+        if (paidModels.length === 0) {
+          console.log(
+            Palette.error('✖ No paid-capable model is registered. Connect a provider with paid models first.')
+          );
+          await waitForAnyKey();
+          continue;
+        }
+        console.log(Palette.bold('\nPaid models eligible after confirmation:'));
+        for (const m of paidModels) {
+          console.log(`  - ${m.provider_id}/${m.model_id}`);
+        }
+        console.log(
+          Palette.yellow('\nConfirm: authorize paid usage for this run? [y/N] — no grant exists until you confirm')
+        );
+        const confirmed = await promptPaidConfirm(paidModels[0].model_id);
+        if (!confirmed) {
+          console.log(Palette.dim('Cancelled — no PaidGrant was issued.'));
+          continue; // back to the two-action screen; run still paused
+        }
+        try {
+          const result = await engine.resolvePoolExhausted(runId, 'authorize_paid', { confirm: true });
+          if (result.plan) return { status: 'replanned', plan: result.plan };
+          return { status: 'resumed' };
+        } catch (err: any) {
+          console.log(Palette.error(`✖ ${err.message}`));
+          await waitForAnyKey();
+          continue;
+        }
+      }
+
+      // Action (b): connect an additional free-tier provider, then resolve.
+      const added = await addProviderFlow();
+      if (!added) {
+        continue; // back to the two-action screen; run still paused
+      }
+      try {
+        const result = await engine.resolvePoolExhausted(runId, 'add_free_provider');
+        if (result.plan) return { status: 'replanned', plan: result.plan };
+        return { status: 'resumed' };
+      } catch (err: any) {
+        // Honest still-exhausted: the run stays paused.
+        console.log(Palette.error(`✖ ${err.message}`));
+        await waitForAnyKey();
+        continue;
+      }
+    }
   };
 
   // Fallback for non-TTY (pipes, scripts, CI)
@@ -261,6 +476,37 @@ program.action(async () => {
         return;
       }
 
+      // GAP-006: TUI tier-override commands (thin clients over engine methods).
+      if (line.startsWith('/models tag ') || line.startsWith('/models untag ')) {
+        process.stdout.write('\x1b[2J\x1b[H');
+        const parts = line.trim().split(/\s+/); // /models tag <model-id> [--tier <tier>]
+        try {
+          if (parts[1] === 'untag') {
+            const result = engine.deleteModelOverride(parts[2] || '');
+            console.log(Palette.ok(`✔ Removed tier override for ${result.provider_id}/${result.model_id}`));
+          } else {
+            const tierFlag = parts.indexOf('--tier');
+            const tier = tierFlag >= 0 ? parts[tierFlag + 1] : undefined;
+            if (!tier || !['free', 'paid', 'disabled'].includes(tier)) {
+              console.log(Palette.error('✖ Usage: /models tag <model-id> --tier free|paid|disabled'));
+            } else {
+              const result = engine.setModelOverride(parts[2] || '', tier as 'free' | 'paid' | 'disabled');
+              console.log(
+                Palette.ok(`✔ Tagged ${result.provider_id}/${result.model_id} as '${result.tier}' (override)`)
+              );
+            }
+          }
+        } catch (err: any) {
+          console.log(Palette.error(`✖ ${err.message}`));
+        }
+        console.log(Palette.dim('Hint: /models lists the catalog with override markers.'));
+        await waitForAnyKey();
+        process.stdin.setRawMode(true);
+        isExecuting = false;
+        redraw();
+        return;
+      }
+
       if (line === '/providers') {
         process.stdout.write('\x1b[2J\x1b[H');
         const provs = engine.providerRepo.listAll();
@@ -283,60 +529,7 @@ program.action(async () => {
 
       if (line === '/providers add' || line.startsWith('/providers add')) {
         process.stdout.write('\x1b[2J\x1b[H');
-        console.log(Palette.bold('\nConnect a Provider to FlappyCode'));
-        console.log(Palette.subtle('Supported types: openrouter, groq, ollama, google, anthropic, openai-compatible\n'));
-
-        const type = await promptSingleLine('Provider type (e.g. openrouter / ollama / groq / google): ');
-        if (!type.trim()) {
-          console.log(Palette.yellow('Cancelled.'));
-          await waitForAnyKey();
-          process.stdin.setRawMode(true);
-          isExecuting = false;
-          redraw();
-          return;
-        }
-
-        const name = await promptSingleLine(`Display name [default: ${type.trim()}]: `);
-        const displayName = name.trim() || type.trim();
-
-        let baseUrl: string | undefined;
-        if (type.trim().toLowerCase() === 'ollama') {
-          const urlInput = await promptSingleLine('Ollama URL [default: http://localhost:11434]: ');
-          baseUrl = urlInput.trim() || 'http://localhost:11434';
-        } else if (type.trim().toLowerCase() === 'openai-compatible') {
-          baseUrl = await promptSingleLine('Base URL (e.g. http://localhost:1234/v1): ');
-        }
-
-        let key: string | undefined;
-        if (type.trim().toLowerCase() !== 'ollama') {
-          key = await promptSingleLine('API key: ');
-        }
-
-        const id = displayName.toLowerCase().replace(/\s+/g, '-');
-        const cfg = {
-          id,
-          type: type.trim().toLowerCase(),
-          display_name: displayName,
-          base_url: baseUrl,
-          enabled: true,
-          max_concurrency: 4,
-          data_use_policy: 'unknown' as const,
-          created_at: Date.now(),
-        };
-
-        try {
-          console.log(`\nConnecting and discovering models for '${displayName}'...`);
-          const models = await engine.addProvider(cfg, key?.trim());
-          const freeCount = models.filter((m) => m.tier === 'free' || m.tier === 'rate_limited_free').length;
-          console.log(
-            Palette.ok(
-              `✔ Successfully connected '${displayName}': discovered ${models.length} models (${freeCount} free/rate-limited-free)`
-            )
-          );
-        } catch (err: any) {
-          console.log(Palette.error(`✖ Failed to connect provider: ${err.message}`));
-        }
-
+        await addProviderFlow();
         await waitForAnyKey();
         process.stdin.setRawMode(true);
         isExecuting = false;
@@ -385,7 +578,7 @@ program.action(async () => {
 
       if (line.startsWith('/')) {
         process.stdout.write('\x1b[2J\x1b[H');
-        console.log(`Available slash commands: /models, /providers, /providers add, /undo, /rules, /exit`);
+        console.log(`Available slash commands: /models, /models tag <id> --tier <free|paid|disabled>, /models untag <id>, /providers, /providers add, /undo, /rules, /exit`);
         await waitForAnyKey();
         process.stdin.setRawMode(true);
         isExecuting = false;
@@ -418,7 +611,41 @@ program.action(async () => {
       console.log(Palette.bold(Palette.yellow('FLAPPY') + Palette.cyan('CODE')) + ' ' + Palette.subtle('— Task Execution'));
       console.log(Palette.cyan(`\nProcessing request with flappyauto: "${line}"...`));
       try {
-        const plan = await engine.submitPrompt(line);
+        // GAP-002: capture the run id of a planning-stage pool pause from the
+        // engine's approval.requested event (event → UI → command).
+        let poolRunId: string | undefined;
+        const unsubPool = engine.eventBus.on('approval.requested', (ev) => {
+          if (ev.kind === 'pool_exhausted') poolRunId = ev.run_id;
+        });
+
+        let plan: Awaited<ReturnType<typeof engine.submitPrompt>> | null = null;
+        try {
+          plan = await engine.submitPrompt(line);
+        } catch (err: any) {
+          if (err?.name !== 'PoolExhaustedError' || !poolRunId) throw err;
+          const outcome = await handlePoolExhaustedInteractive(poolRunId);
+          if (outcome.status === 'cancelled') {
+            plan = null;
+          } else {
+            plan = outcome.status === 'replanned' ? outcome.plan : null;
+            if (plan === null) {
+              console.log(
+                Palette.yellow(`\n⏸ Run ${poolRunId} is paused. Resolve it later to resume — no paid model was used.`)
+              );
+            }
+          }
+        } finally {
+          unsubPool();
+        }
+
+        if (plan === null) {
+          await waitForAnyKey();
+          process.stdin.setRawMode(true);
+          isExecuting = false;
+          redraw();
+          return;
+        }
+
         process.stdout.write('\x1b[2J\x1b[H');
         console.log(PlanApprovalScreen.render(plan, getWidth()));
 
@@ -501,8 +728,43 @@ program.action(async () => {
           };
 
           try {
-            await engine.executePlan(runId, onDiffApprovalRequired, onPermissionApprovalRequired);
-            console.log(Palette.ok(`\n✔ Task completed successfully!`));
+            // GAP-002: pause → interactive notice → resolve → resume, all in
+            // one loop so the event subscriptions stay alive across resume.
+            let done = false;
+            while (!done) {
+              try {
+                await engine.executePlan(runId, onDiffApprovalRequired, onPermissionApprovalRequired);
+                console.log(Palette.ok(`\n✔ Task completed successfully!`));
+                done = true;
+              } catch (err: any) {
+                if (err?.name !== 'PoolExhaustedError') throw err;
+                const outcome = await handlePoolExhaustedInteractive(runId);
+                if (outcome.status === 'resumed') {
+                  // resolvePoolExhausted re-ran executePlan to completion.
+                  console.log(Palette.ok(`\n✔ Task completed successfully!`));
+                  done = true;
+                } else if (outcome.status === 'replanned') {
+                  // Resolution produced a fresh plan (pause boundary crossed
+                  // during planning): run the standard approval flow.
+                  process.stdout.write('\x1b[2J\x1b[H');
+                  console.log(PlanApprovalScreen.render(outcome.plan, getWidth()));
+                  const d = await promptPlanDecision();
+                  if (d === 'approve') {
+                    engine.approvePlan(outcome.plan.run_id);
+                    runId = outcome.plan.run_id;
+                  } else {
+                    console.log(Palette.yellow('\n✖ Plan rejected. Run cancelled. No files were modified.'));
+                    done = true;
+                  }
+                } else {
+                  // keep paused: exit the run cleanly, state persists.
+                  console.log(
+                    Palette.yellow(`\n⏸ Run ${runId} is paused. Resolve it later to resume — no paid model was used.`)
+                  );
+                  done = true;
+                }
+              }
+            }
           } finally {
             unsubs.forEach((unsub) => {
               try { unsub(); } catch {}
@@ -647,10 +909,25 @@ program
       }
       process.exit(0);
     } catch (err: any) {
-      if (err.message?.includes('pool is exhausted')) {
-        if (!options.json) console.error(Palette.error('✖ Free model pool exhausted.'));
+      const isPoolExhausted =
+        err?.name === 'PoolExhaustedError' ||
+        err?.code === 'POOL_EXHAUSTED' ||
+        err?.message?.includes('pool is exhausted') ||
+        err?.message?.includes('pool exhausted');
+      if (isPoolExhausted) {
+        // Headless: no screen. The NDJSON stream already carries
+        // approval.requested{kind:'pool_exhausted'} with exactly two actions,
+        // pool.exhausted, and run.failed{reason:'pool_exhausted'}.
+        if (!options.json) {
+          console.error(Palette.error('✖ Free model pool exhausted.'));
+          console.error('  Two actions are available:');
+          console.error('  1. Add credit / recharge a paid-capable provider');
+          console.error('  2. Connect another free-tier provider');
+          console.error('  Resolve with: POST /v1/commands {"type":"resolvePoolExhausted",...} (flappycode serve)');
+        }
         process.exit(4);
       }
+      // In --json mode the engine already emitted run.failed; keep stdout NDJSON-only.
       if (!options.json) console.error(Palette.error(`✖ Task failed: ${err.message}`));
       process.exit(1);
     }
@@ -761,12 +1038,12 @@ providersCmd
   });
 
 // Models command
-program
-  .command('models')
-  .description('List available models in the unified catalog')
+const modelsCmd = program.command('models').description('List available models in the unified catalog');
+
+modelsCmd
   .option('--free', 'Show only free / rate-limited-free models')
   .option('--provider <id>', 'Filter by provider')
-  .option('--tier <tier>', 'Filter by tier (free, rate_limited_free, paid)')
+  .option('--tier <tier>', 'Filter by tier (free, rate_limited_free, paid, disabled)')
   .option('--json', 'Output as JSON')
   .action((options) => {
     const engine = new FlappyEngine();
@@ -789,8 +1066,75 @@ program
 
     console.log(`\nModels (${models.length}):`);
     for (const m of models) {
-      const tierTag = m.tier === 'free' ? Palette.ok('free') : m.tier === 'rate_limited_free' ? Palette.subtle('rate-limited-free') : Palette.orange('paid');
-      console.log(`  ${m.provider_id}/${m.model_id} [${tierTag}] (${(m.context_length / 1024).toFixed(0)}k ctx)`);
+      const tierTag =
+        m.tier === 'free'
+          ? Palette.ok('free')
+          : m.tier === 'rate_limited_free'
+            ? Palette.subtle('rate-limited-free')
+            : m.tier === 'disabled'
+              ? Palette.dim('disabled')
+              : m.tier === 'unavailable'
+                ? Palette.dim('unavailable')
+                : Palette.orange('paid');
+      // GAP-006: surface the effective tier source so overrides are visible.
+      const source = m.tier_source === 'override' ? Palette.cyan(' override') : '';
+      console.log(
+        `  ${m.provider_id}/${m.model_id} [${tierTag}${source}] (${(m.context_length / 1024).toFixed(0)}k ctx)`
+      );
+    }
+  });
+
+// GAP-006 (FR-MOD-005): user-facing tier override commands.
+modelsCmd
+  .command('tag <model-id>')
+  .description("Force a model's tier (e.g. flappycode models tag openrouter/qwen3-coder:free --tier free)")
+  .requiredOption('--tier <tier>', 'Tier: free | paid | disabled')
+  .option('--json', 'Output as JSON')
+  .action((modelId: string, options: { tier: string; json?: boolean }) => {
+    const engine = new FlappyEngine();
+    const validTiers = ['free', 'paid', 'disabled'];
+    if (!validTiers.includes(options.tier)) {
+      const msg = `Invalid tier '${options.tier}'. Valid tiers: ${validTiers.join(', ')}.`;
+      if (options.json) console.log(JSON.stringify({ success: false, error: msg }));
+      else console.error(Palette.error(`✖ ${msg}`));
+      process.exit(2);
+    }
+    try {
+      const result = engine.setModelOverride(modelId, options.tier as 'free' | 'paid' | 'disabled');
+      if (options.json) {
+        console.log(JSON.stringify({ success: true, ...result, tier_source: 'override' }, null, 2));
+      } else {
+        console.log(
+          Palette.ok(`✔ Tagged ${result.provider_id}/${result.model_id} as '${result.tier}' (override persists across providers refresh)`)
+        );
+        if (result.tier === 'paid') {
+          console.log(Palette.dim('  Note: paid models still require an explicit PaidGrant before any call is made.'));
+        }
+      }
+    } catch (err: any) {
+      if (options.json) console.log(JSON.stringify({ success: false, error: err.message }));
+      else console.error(Palette.error(`✖ ${err.message}`));
+      process.exit(2);
+    }
+  });
+
+modelsCmd
+  .command('untag <model-id>')
+  .description('Remove a tier override and restore inferred classification')
+  .option('--json', 'Output as JSON')
+  .action((modelId: string, options: { json?: boolean }) => {
+    const engine = new FlappyEngine();
+    try {
+      const result = engine.deleteModelOverride(modelId);
+      if (options.json) {
+        console.log(JSON.stringify({ success: true, ...result }, null, 2));
+      } else {
+        console.log(Palette.ok(`✔ Removed tier override for ${result.provider_id}/${result.model_id}`));
+      }
+    } catch (err: any) {
+      if (options.json) console.log(JSON.stringify({ success: false, error: err.message }));
+      else console.error(Palette.error(`✖ ${err.message}`));
+      process.exit(2);
     }
   });
 

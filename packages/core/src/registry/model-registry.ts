@@ -14,6 +14,7 @@ import {
   OllamaConnector,
   OpenAICompatibleConnector,
   ProviderConnector,
+  PROVIDER_PROFILES,
 } from '@flappycode/providers';
 import { ModelClassifier } from './classifier.js';
 import { CapabilityProbe } from './probe.js';
@@ -43,6 +44,9 @@ export class ModelRegistry {
     // Register built-in connectors
     this.registerConnector('openai-compatible', new OpenAICompatibleConnector());
     this.registerConnector('ollama', new OllamaConnector());
+    // GAP-034: Ollama Cloud reuses the Ollama connector; the profile layer
+    // supplies the cloud base URL and Bearer auth requirement.
+    this.registerConnector('ollama-cloud', new OllamaConnector());
     this.registerConnector('anthropic', new AnthropicConnector());
     this.registerConnector('google', new GoogleConnector());
     this.registerConnector('mock', new MockProviderConnector());
@@ -70,6 +74,10 @@ export class ModelRegistry {
   }
 
   public async addProvider(cfg: ProviderConfig, apiKey?: string): Promise<Model[]> {
+    if (!cfg.data_use_policy) {
+      const profile = PROVIDER_PROFILES[cfg.id] || PROVIDER_PROFILES[cfg.type];
+      cfg.data_use_policy = profile?.defaultDataUsePolicy || 'unknown';
+    }
     if (apiKey) {
       await this.secretStore.setSecret(cfg.id, apiKey);
       cfg.api_key_ref = `provider:${cfg.id}`;
@@ -84,7 +92,7 @@ export class ModelRegistry {
       throw new Error(`Provider '${providerId}' not found`);
     }
 
-    const connector = this.getConnector(cfg.type);
+    const connector = this.connectors.get(cfg.id) || this.getConnector(cfg.type);
     const apiKey = await this.secretStore.resolveSecretRef(cfg.api_key_ref);
 
     let rawModels: RawModel[] = [];
@@ -136,7 +144,10 @@ export class ModelRegistry {
         avg_latency_ms: 0,
         last_validated_at: Date.now(),
         data_use_policy: cfg.data_use_policy || 'unknown',
-        is_local: cfg.type === 'ollama' || cfg.type === 'lm-studio' || cfg.type === 'llama-cpp',
+        is_local: (() => {
+          const profile = PROVIDER_PROFILES[providerId] || PROVIDER_PROFILES[cfg.type];
+          return profile ? profile.isLocal : (cfg.type === 'ollama' || cfg.type === 'lm-studio' || cfg.type === 'llama-cpp');
+        })(),
         is_pinned: false,
       };
 
@@ -182,7 +193,33 @@ export class ModelRegistry {
 
   public deleteOverride(providerId: string, modelId: string): void {
     this.modelRepo.deleteOverride(providerId, modelId);
+    // GAP-006: restore the inferred classification immediately so the listing
+    // is not stale until the next discovery pass. The SAME classifier is used
+    // (no second classification mechanism); pricing-derived results may be
+    // refined by a later `providers refresh`.
+    this.restoreClassification(providerId, modelId);
     this.emitRegistryUpdated();
+  }
+
+  /** Recompute one model's tier from persisted metadata with no override. */
+  private restoreClassification(providerId: string, modelId: string): void {
+    const model = this.modelRepo.getModel(providerId, modelId);
+    if (!model) return;
+    const cfg = this.providerRepo.get(providerId);
+    const raw: RawModel = {
+      id: model.model_id,
+      context_length: model.context_length,
+      supports_tools: model.supports_tools,
+      supports_vision: model.supports_vision,
+      price_in: model.price_in,
+      price_out: model.price_out,
+    };
+    const classification = this.classifier.classify(providerId, raw, null, cfg?.type);
+    this.modelRepo.saveModel({
+      ...model,
+      tier: classification.tier,
+      tier_source: classification.source,
+    });
   }
 
   public getLiveState(providerId: string, modelId: string): LiveModelState {

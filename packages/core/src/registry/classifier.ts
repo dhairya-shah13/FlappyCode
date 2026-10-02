@@ -55,7 +55,7 @@ export class ModelClassifier {
     }
 
     // 4. Provider-specific rules
-    const profile = PROVIDER_PROFILES[providerType || providerId] || PROVIDER_PROFILES[providerId];
+    const profile = PROVIDER_PROFILES[providerId] || (providerType ? PROVIDER_PROFILES[providerType] : undefined);
     if (profile) {
       if (profile.freeClassifierRule) {
         if (profile.freeClassifierRule(modelId, rawModel.raw_metadata)) {

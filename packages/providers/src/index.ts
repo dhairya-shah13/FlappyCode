@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export * from './types.js';
+export * from './user-agent.js';
 export * from './profiles.js';
 export * from './openai-compatible.js';
 export * from './ollama.js';

@@ -203,7 +203,7 @@ export class ModelRepository {
 
   private mapRow(row: any): Model {
     const isLocal =
-      row.provider_type === 'ollama' ||
+      (row.provider_type === 'ollama' && row.provider_id !== 'ollama-cloud' && row.provider_type !== 'ollama-cloud') ||
       row.provider_type === 'lm-studio' ||
       row.provider_type === 'llama-cpp';
 

@@ -55,4 +55,74 @@ describe('FlappyServer Loopback HTTP/SSE Security Tests (FR-SRV-001, FR-SRV-002,
     const data = (await res.json()) as any;
     expect(data.total_models).toBeDefined();
   });
+
+  it('Rejects resolvePoolExhausted with 409 when no paused run exists (no fake success)', async () => {
+    const res = await fetch(`http://127.0.0.1:${testPort}/v1/commands`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${server.bearerToken}`,
+      },
+      body: JSON.stringify({
+        type: 'resolvePoolExhausted',
+        run_id: 'non-existent-run',
+        action: 'add_free_provider',
+      }),
+    });
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as any;
+    expect(body.success).toBe(false);
+    expect(body.error).toMatch(/No paused pool-exhausted run/);
+  });
+
+  it('Executes setModelOverride and deleteModelOverride through /v1/commands', async () => {
+    await engine.registry.addProvider({
+      id: 'mock-p1',
+      type: 'mock',
+      data_use_policy: 'no_training',
+      display_name: 'Mock Provider',
+      enabled: true,
+    });
+
+    // Tag to paid
+    const resTag = await fetch(`http://127.0.0.1:${testPort}/v1/commands`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${server.bearerToken}`,
+      },
+      body: JSON.stringify({
+        type: 'setModelOverride',
+        model_id: 'mock-p1/mock-coder-free',
+        tier: 'paid',
+      }),
+    });
+    expect(resTag.status).toBe(200);
+    const bodyTag = (await resTag.json()) as any;
+    expect(bodyTag.success).toBe(true);
+    expect(bodyTag.tier).toBe('paid');
+
+    const model = engine.getModels().find((m) => m.model_id === 'mock-coder-free');
+    expect(model?.tier).toBe('paid');
+    expect(model?.tier_source).toBe('override');
+
+    // Untag
+    const resUntag = await fetch(`http://127.0.0.1:${testPort}/v1/commands`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${server.bearerToken}`,
+      },
+      body: JSON.stringify({
+        type: 'deleteModelOverride',
+        model_id: 'mock-p1/mock-coder-free',
+      }),
+    });
+    expect(resUntag.status).toBe(200);
+    const bodyUntag = (await resUntag.json()) as any;
+    expect(bodyUntag.success).toBe(true);
+
+    const modelRestored = engine.getModels().find((m) => m.model_id === 'mock-coder-free');
+    expect(modelRestored?.tier).toBe('free');
+  });
 });

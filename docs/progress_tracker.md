@@ -1,6 +1,6 @@
 # Phase 1 Gap Implementation — Progress Tracker
 
-## Current Status: Lint ✅ | Tests ✅ (89/89) | Build ⬜
+## Current Status: Lint ✅ | Tests ✅ (110/110) | Build ✅
 
 ---
 
@@ -16,16 +16,16 @@
 | GAP-028 | Child Process Env Sanitization | ✅ Done | `shell-tool.ts:42-51` strips `API_KEY/TOKEN/SECRET/PASSWORD/AUTH/CREDENTIAL` env vars. |
 | GAP-037 | Secure Encrypted Fallback KDF | ✅ Done | `secrets.ts` uses `scrypt` with random per-install salt, never derives from hostname/username/platform. |
 
-## Stage B: Provider Reliability & Model Routing — Status: 🔶 Mostly Done (engine-side complete; a few product surfaces remain)
+## Stage B: Provider Reliability & Model Routing — Status: ✅ Complete
 
 | GAP | Item | Status | Notes |
 |-----|------|--------|-------|
 | GAP-001/003/004 | FallbackExecutor, Backoff, Eventing | ✅ Done | `fallback-executor.ts` exists and is wired into `flappyauto.ts`: exponential backoff + jitter + Retry-After (`computeBackoffMs`), candidate iteration with `excludeModelIds`, `model.substituted` emitted per real substitution, `recordModelError`/cooldowns populated. Covered by `tests/unit/fallback-executor.test.ts` (13) + `tests/integration/stage-b-fallback.test.ts` (22). |
-| GAP-002 | Pool Exhaustion Interactive Pause/Resume | 🔶 Partial | Engine complete: `handlePoolExhausted` persists `paused_pool_exhausted`, emits `approval.requested{kind:'pool_exhausted'}` with exactly 2 actions; `engine.resolvePoolExhausted` implements both actions + cancel, PaidGrant only after explicit confirm, honest still-exhausted error, resume path (integration-tested). **Remaining:** `PoolExhaustedScreen` imported but never rendered in `cli.ts`; server still fakes `success:true` for `resolvePoolExhausted`. |
+| GAP-002 | Pool Exhaustion Interactive Pause/Resume | ✅ Done | `PoolExhaustedScreen` wired into interactive CLI/TUI flow and `cli.ts`; server implements honest `resolvePoolExhausted` (409 on error/no paused run, 200 on success, never fake success); headless exits code 4 on exhaustion without grant; resume path tested in `tests/integration/stage-b-completion.test.ts` & `tests/unit/server.test.ts`. |
 | GAP-005 | Periodic Registry Revalidation | ✅ Done | `registry/scheduler.ts` (`IntervalScheduler`) wired into engine startup, honors `revalidate_every_hours` (default 6), stops on `engine.close()`. Integration test: Stage B3. |
-| GAP-006 | User Model Tier Overrides | 🔶 Partial | `registry.setOverride()/deleteOverride()` persist to `model_override`, classifier honors override precedence, survives refresh (integration-tested). **Remaining:** no `models tag` CLI/TUI command exposing it to users. |
+| GAP-006 | User Model Tier Overrides | ✅ Done | CLI commands `flappycode models tag <model> <free|paid|disabled>` and `flappycode models untag <model>` wired; TUI `ModelPickerScreen` renders `[override]` tag and handles disabled models; server command endpoint `/v1/commands` supports `setModelOverride` and `deleteModelOverride`; classifier honors override precedence and router excludes disabled models. Covered in `tests/unit/model-overrides.test.ts`. |
 | GAP-044 | Agent fallbackPolicy | ✅ Done | `router.ts` returns `needsUserDecision` for `ask_user`/`abort` when a pinned model is unavailable (no silent re-route); `FallbackExecutor` emits `question.asked` and waits for the user decision (`next_best_fit`/`cancel`). Covered by Stage B5 tests. |
-| GAP-034-036,039,041-043 | Provider Profiles & Connectors | 🔶 Partial | Done: GAP-039 (`authenticate()` before discovery in `engine.addProvider`), GAP-041 (data-use policy from bundled profile), GAP-042 (`ProviderRateLimiter` token bucket wired into FallbackExecutor), GAP-043 (modality/latency/price filters in `model-repo`). **Remaining:** Ollama Cloud profile (034), Anthropic/Google tool-call normalization — request-side `tools` mapping exists for Anthropic but no `tool_use`/`functionCall` response parsing; Google sends no `tools` at all (035), `User-Agent` missing on `google.ts`/`ollama.ts` (036). |
+| GAP-034-036,039,041-043 | Provider Profiles & Connectors | ✅ Done | Done: GAP-034 (Ollama Cloud profile added with 30 RPM, rate_limited_free rule, bearer auth, cloud endpoint); GAP-035 (Anthropic and Google bidirectional tool-call normalization with request mapping, SSE functionCall/tool_use delta parser, and tool-result round trip); GAP-036 (User-Agent header `flappycode/<version>` on all outbound Google and Ollama requests); GAP-039 (authenticate before discovery); GAP-041 (bundled data-use policy); GAP-042 (token bucket rate limiter); GAP-043 (modality/latency/price filters). Covered in `tests/unit/connectors.test.ts` & `tests/integration/stage-b-completion.test.ts`. |
 
 ## Stage C: Multi-Agent Orchestration — Status: 🔴 Partially Done
 
@@ -85,6 +85,6 @@
 
 ## Immediate Next Steps
 1. ✅ Fixed blocking issues (ContextManager import, run.started event)
-2. **Stage B**: ✅ `FallbackExecutor` + scheduler + fallbackPolicy done. Remaining: wire `PoolExhaustedScreen`/`resolvePoolExhausted` into CLI+server, `models tag` command, Ollama Cloud profile, Anthropic/Google tool-call normalization, User-Agent headers.
+2. **Stage B**: ✅ Fully completed (`FallbackExecutor`, backoff/eventing, periodic scheduler, fallbackPolicy, pool exhaustion TUI/server, model tag/untag CLI/TUI/server, Ollama Cloud, Anthropic & Google tool-call normalization, User-Agent headers).
 3. **Stage C**: Wire `--model` single-model mode, implement feedback loop, add cancellation
 4. Continue through remaining stages systematically

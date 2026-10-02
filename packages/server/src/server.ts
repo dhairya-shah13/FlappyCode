@@ -126,9 +126,64 @@ export class FlappyServer {
             this.engine.approvePlan(cmd.run_id);
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ success: true }));
-          } else {
+          } else if (cmd.type === 'resolvePoolExhausted') {
+            // GAP-002: real engine execution — never acknowledge without doing.
+            try {
+              const result = await this.engine.resolvePoolExhausted(
+                cmd.run_id,
+                cmd.action,
+                { confirm: cmd.confirm, modelId: cmd.paid_model_id }
+              );
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ success: true, ...result }));
+            } catch (err: any) {
+              // Honest propagation: no paused run, unconfirmed paid action,
+              // still-exhausted pool, etc. — never a fake success.
+              res.writeHead(409, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ success: false, error: err.message }));
+            }
+          } else if (cmd.type === 'setModelOverride') {
+            try {
+              const result = this.engine.setModelOverride(cmd.model_id, cmd.tier);
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ success: true, ...result }));
+            } catch (err: any) {
+              res.writeHead(400, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ success: false, error: err.message }));
+            }
+          } else if (cmd.type === 'deleteModelOverride') {
+            try {
+              const result = this.engine.deleteModelOverride(cmd.model_id);
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ success: true, ...result }));
+            } catch (err: any) {
+              res.writeHead(400, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ success: false, error: err.message }));
+            }
+          } else if (cmd.type === 'cancelRun') {
+            this.engine.cancelRun(cmd.run_id);
             res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ success: true, command: cmd.type }));
+            res.end(JSON.stringify({ success: true }));
+          } else if (cmd.type === 'addProvider') {
+            try {
+              const models = await this.engine.addProvider(cmd.provider, cmd.api_key);
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ success: true, models }));
+            } catch (err: any) {
+              res.writeHead(400, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ success: false, error: err.message }));
+            }
+          } else if (cmd.type === 'refreshProviders') {
+            await this.engine.refreshProviders();
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true }));
+          } else if (cmd.type === 'pinModel') {
+            this.engine.bindAgent(cmd.agent_name, cmd.model_id);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true }));
+          } else {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: false, error: `Command '${(cmd as any).type}' is not supported.` }));
           }
         } catch (err: any) {
           res.writeHead(400, { 'Content-Type': 'application/json' });

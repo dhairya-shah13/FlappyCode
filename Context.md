@@ -53,13 +53,14 @@ FlappyCode is a developer-centric CLI tool, local loopback daemon, and multi-age
 - Interactive screens: `HomeScreen` (with `renderLayout` computing exact in-box terminal cursor coordinates and closed rounded box padding), `OnboardingWizardScreen`, `ModelPickerScreen`, `PlanApprovalScreen`, `DiffReviewScreen`, `PoolExhaustedScreen`.
 - Universal `Palette` with automatic ASCII fallback when `NO_COLOR` is detected or non-TTY terminal is used.
 
-### 6.1 Stage B — Provider Reliability & Model Routing (verified complete engine-side)
+### 6.1 Stage B — Provider Reliability & Model Routing (fully implemented & verified)
 - `FallbackExecutor` (`packages/core/src/orchestration/fallback-executor.ts`) wraps all connector calls with exponential backoff + jitter + `Retry-After` honoring, then iterates the router's ranked candidates (`excludeModelIds`) — transparent substitution on busy/429/5xx/timeout/quota/disappearance. Every real swap emits `model.substituted` and appends to `node.substitutions`; `recordModelError`/cooldowns are populated from the execution path.
-- Pool exhaustion pauses the run (`paused_pool_exhausted`), emits `approval.requested{kind:'pool_exhausted'}` with exactly two actions (`authorize_paid` requiring explicit confirm before any `PaidGrant`, `add_free_provider`), and `FlappyEngine.resolvePoolExhausted()` resumes it honestly.
+- Pool exhaustion pauses the run (`paused_pool_exhausted`), emits `approval.requested{kind:'pool_exhausted'}` with exactly two actions (`authorize_paid` requiring explicit confirm before any `PaidGrant`, `add_free_provider`), and `FlappyEngine.resolvePoolExhausted()` resumes it honestly. Surfaced in interactive TUI/CLI via `PoolExhaustedScreen` and in `/v1/commands` (409 on error/invalid, 200 on success).
 - `IntervalScheduler` (`registry/scheduler.ts`) revalidates the registry every `revalidate_every_hours` (default 6) and stops cleanly on `engine.close()`.
+- User model tier overrides (`GAP-006`): `flappycode models tag <model> <free|paid|disabled>` and `flappycode models untag <model>` CLI commands; TUI `ModelPickerScreen` displays `[override]` and handles disabled models; server command endpoint `/v1/commands` supports `setModelOverride` and `deleteModelOverride`.
 - Router honors per-agent `fallbackPolicy`: unavailable pinned model returns `needsUserDecision` (default `ask_user` → `question.asked`), never a silent re-route.
 - `ProviderRateLimiter` (token bucket, FR-PRV-008) throttles outbound calls per provider; authenticated-before-discover on `providers add` (FR-PRV-002); data-use policy sourced from bundled profiles (FR-PRV-006).
-- Known remaining product-surface wiring: `PoolExhaustedScreen`/`resolvePoolExhausted` not yet surfaced in CLI/server, no `models tag` command, Ollama Cloud profile, Anthropic/Google tool-call response normalization, `User-Agent` on google/ollama connectors.
+- Connectors & Profiles (`GAP-034/035/036`): Ollama Cloud profile (`https://ollama.com`, Bearer auth, 30 RPM, `rate_limited_free`); Anthropic & Google bidirectional tool-call normalization with request mapping, SSE `tool_use`/`functionCall` delta parser, and tool-result round trip; honest `User-Agent: flappycode/<version>` header across all outbound provider requests.
 
 ### 7. Unified CLI Executable (`@flappycode/cli`)
 - Binary command `flappycode`:

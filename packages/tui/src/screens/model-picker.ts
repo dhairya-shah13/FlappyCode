@@ -21,9 +21,10 @@ export class ModelPickerScreen {
       const isSelected = selectedIndex === idx + 1;
       const marker = isSelected ? Palette.cyan('▸ ● ') : '  ● ';
       const tag = m.is_local ? Palette.ok('local') : Palette.subtle('free');
+      const overrideTag = m.tier_source === 'override' ? Palette.cyan(' [override]') : '';
       const warning = m.data_use_policy === 'trains_on_prompts' ? Palette.yellow('⚠ trains') : '';
       const name = `${m.provider_id}/${m.model_id}`.slice(0, 35);
-      content += `│ ${marker}${name.padEnd(36)} ${(m.context_length / 1024).toFixed(0)}k  tools   ${tag}  ${warning} │\n`;
+      content += `│ ${marker}${name.padEnd(34)} ${(m.context_length / 1024).toFixed(0)}k  tools   ${tag}${overrideTag}  ${warning} │\n`;
     });
 
     if (paidModels.length > 0) {
@@ -31,12 +32,22 @@ export class ModelPickerScreen {
       paidModels.slice(0, 3).forEach((m, idx) => {
         const isSelected = selectedIndex === freeModels.length + 1 + idx;
         const marker = isSelected ? Palette.cyan('▸ ○ ') : '  ○ ';
+        const overrideTag = m.tier_source === 'override' ? Palette.cyan(' [override]') : '';
         const name = `${m.provider_id}/${m.model_id}`.slice(0, 35);
-        content += `│ ${marker}${name.padEnd(36)} ${(m.context_length / 1024).toFixed(0)}k  tools   ${Palette.orange('$$')}                          │\n`;
+        content += `│ ${marker}${name.padEnd(34)} ${(m.context_length / 1024).toFixed(0)}k  tools   ${Palette.orange('$$')}${overrideTag}           │\n`;
       });
     }
 
-    content += `│ ${Palette.dim('↑↓ move  ↵ select  Tab: bind to agent…  f: free only  Esc')}                       │\n`;
+    const disabledModels = models.filter((m) => m.tier === 'disabled');
+    if (disabledModels.length > 0) {
+      content += `│   ${Palette.dim('DISABLED (never routed by orchestrator)')}                                         │\n`;
+      disabledModels.forEach((m) => {
+        const name = `${m.provider_id}/${m.model_id}`.slice(0, 35);
+        content += `│     ${Palette.dim('✕')} ${Palette.dim(name.padEnd(34))} ${Palette.dim('disabled')} ${Palette.cyan('[override]')}            │\n`;
+      });
+    }
+
+    content += `│ ${Palette.dim('↑↓ move  ↵ select  /models tag <id> --tier <free|paid|disabled>  Esc')}               │\n`;
     content += `╰${boxRule}╯\n`;
     return content;
   }

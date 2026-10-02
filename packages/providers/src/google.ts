@@ -6,6 +6,7 @@ import {
   HealthInfo,
   ProviderConnector,
 } from './types.js';
+import { USER_AGENT } from './user-agent.js';
 
 export class GoogleConnector implements ProviderConnector {
   public readonly type = 'google';
@@ -15,7 +16,7 @@ export class GoogleConnector implements ProviderConnector {
     const url = `${baseUrl}/models${apiKey ? `?key=${apiKey}` : ''}`;
 
     try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT }, signal: AbortSignal.timeout(8000) });
       if (res.status === 400 || res.status === 403) {
         return { success: false, error: 'Invalid Google AI Studio API key (400/403).', category: 'auth' };
       }
@@ -35,7 +36,7 @@ export class GoogleConnector implements ProviderConnector {
     const baseUrl = (cfg.base_url || 'https://generativelanguage.googleapis.com/v1beta').replace(/\/+$/, '');
     const url = `${baseUrl}/models${apiKey ? `?key=${apiKey}` : ''}`;
 
-    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT }, signal: AbortSignal.timeout(10000) });
     if (!res.ok) {
       throw new Error(`Failed to list Google models: HTTP ${res.status}`);
     }
@@ -68,10 +69,57 @@ export class GoogleConnector implements ProviderConnector {
     const model = req.model.replace(/^models\//, '');
     const url = `${baseUrl}/models/${model}:streamGenerateContent?alt=sse${apiKey ? `&key=${apiKey}` : ''}`;
 
-    const contents = req.messages.map((m) => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }],
-    }));
+    // Anthropic-style: pull the system prompt out of the message list into
+    // Gemini's top-level systemInstruction (verified against the generateContent
+    // API reference: systemInstruction is a Content with text parts only).
+    const systemMsg = req.messages.find((m) => m.role === 'system')?.content;
+
+    // Verified gate G1 (ai.google.dev function-calling guide):
+    // - assistant tool_calls -> `model` turn with `functionCall` parts
+    // - role 'tool' results   -> `user` turn with `functionResponse` parts
+    const contents: Array<{ role: string; parts: any[] }> = [];
+    for (const m of req.messages) {
+      if (m.role === 'system') continue;
+      if (m.role === 'tool') {
+        // functionResponse.response must be a JSON object; wrap plain text.
+        let response: any;
+        try {
+          const parsed = JSON.parse(m.content);
+          response = parsed && typeof parsed === 'object' ? parsed : { output: parsed };
+        } catch {
+          response = { output: m.content };
+        }
+        const part = {
+          functionResponse: { name: m.name || '', response },
+        };
+        const prev = contents[contents.length - 1];
+        if (prev && prev.role === 'user' && prev.parts.every((p: any) => p.functionResponse)) {
+          prev.parts.push(part);
+        } else {
+          contents.push({ role: 'user', parts: [part] });
+        }
+        continue;
+      }
+      if (m.role === 'assistant' && m.tool_calls && m.tool_calls.length > 0) {
+        const parts: any[] = [];
+        if (m.content) parts.push({ text: m.content });
+        for (const tc of m.tool_calls) {
+          let args: any = {};
+          try {
+            args = JSON.parse(tc.function.arguments || '{}');
+          } catch {
+            args = {};
+          }
+          parts.push({ functionCall: { name: tc.function.name, args } });
+        }
+        contents.push({ role: 'model', parts });
+        continue;
+      }
+      contents.push({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }],
+      });
+    }
 
     const body: Record<string, any> = {
       contents,
@@ -79,10 +127,24 @@ export class GoogleConnector implements ProviderConnector {
         temperature: req.temperature ?? 0.2,
       },
     };
+    if (systemMsg) {
+      body.systemInstruction = { role: 'user', parts: [{ text: systemMsg }] };
+    }
+    if (req.tools && req.tools.length > 0) {
+      body.tools = [
+        {
+          functionDeclarations: req.tools.map((t) => ({
+            name: t.function.name,
+            description: t.function.description,
+            parameters: t.function.parameters,
+          })),
+        },
+      ];
+    }
 
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'User-Agent': USER_AGENT },
       body: JSON.stringify(body),
       signal: req.signal,
     });
@@ -99,6 +161,12 @@ export class GoogleConnector implements ProviderConnector {
     const reader = res.body.getReader();
     const decoder = new TextDecoder('utf8');
     let buffer = '';
+    // Verified gate G2: finishReason arrives as candidates[0].finishReason on
+    // the final chunk (STOP / MAX_TOKENS / SAFETY / ...). We pass it through
+    // unmodified, matching the OpenAI-compatible connector contract.
+    // Verified gate G3: functionCall.id is present on current models; fall
+    // back to a stable synthesized id when the provider omits it.
+    let toolCallIndex = 0;
 
     try {
       while (true) {
@@ -114,11 +182,32 @@ export class GoogleConnector implements ProviderConnector {
           try {
             const data = JSON.parse(trimmed.slice(6));
             const candidate = data.candidates?.[0];
-            const text = candidate?.content?.parts?.[0]?.text;
-            if (text) {
-              yield { delta: text };
+            if (!candidate) continue;
+            const parts: any[] = candidate.content?.parts;
+            if (Array.isArray(parts)) {
+              for (const part of parts) {
+                if (typeof part.text === 'string' && part.text.length > 0) {
+                  yield { delta: part.text };
+                } else if (part.functionCall) {
+                  const args = part.functionCall.args ?? {};
+                  const index = toolCallIndex++;
+                  yield {
+                    tool_calls: [
+                      {
+                        id: part.functionCall.id || `call_${index}`,
+                        index,
+                        type: 'function' as const,
+                        function: {
+                          name: part.functionCall.name || '',
+                          arguments: JSON.stringify(args),
+                        },
+                      },
+                    ],
+                  };
+                }
+              }
             }
-            if (candidate?.finishReason) {
+            if (candidate.finishReason) {
               yield { finish_reason: candidate.finishReason };
             }
           } catch {

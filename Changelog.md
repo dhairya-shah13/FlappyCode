@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file in reverse chronological order.
 
+## [2026-10-02 13:40]
+
+### [Category: Feature] — Stage B (Provider Reliability & Model Routing) full completion
+What changed: Fully implemented and integrated all remaining Stage B gaps across `@flappycode/protocol`, `@flappycode/providers`, `@flappycode/storage`, `@flappycode/core`, `@flappycode/server`, `@flappycode/tui`, and `@flappycode/cli`:
+- **GAP-002 (Pool Exhaustion Interactive Flow & Server)**: Wired `PoolExhaustedScreen` into the CLI interactive session prompt; implemented real execution for `resolvePoolExhausted` in the HTTP server returning 409 on invalid/unpaused runs and 200 on success; preserved headless exit code 4 without PaidGrant.
+- **GAP-006 (User Model Tier Overrides)**: Added CLI `models tag <model> <free|paid|disabled>` and `models untag <model>` commands; implemented server `setModelOverride` and `deleteModelOverride` command handlers; updated `ModelPickerScreen` to display `[override]` and handle disabled models; verified classifier precedence (override > profile > heuristic > paid) and router exclusion of disabled models.
+- **GAP-034 (Ollama Cloud Profile & Connector)**: Added `ollama-cloud` profile (`https://ollama.com`, Bearer auth, 30 RPM, `rate_limited_free`, `is_local: false`); updated `OllamaConnector` to enforce API key and route cloud calls; updated storage/registry mappings.
+- **GAP-035 (Anthropic & Google Tool-Call Normalization)**: Implemented bidirectional tool-call normalization for Anthropic (`input_schema`, `tool_use`/`input_json_delta` streaming parsing, tool results in user turns) and Google/Gemini (`functionDeclarations`, SSE `functionCall` streaming parsing, `functionResponse` round trips).
+- **GAP-036 (User-Agent Completeness)**: Added `USER_AGENT` (`flappycode/<version>`) header to all outbound Google and Ollama requests (alongside Anthropic and OpenAI-compatible).
+- Added comprehensive unit and integration test suites: `tests/unit/connectors.test.ts` (9 tests), `tests/unit/model-overrides.test.ts` (3 tests), `tests/unit/server.test.ts` (7 tests), `tests/integration/stage-b-completion.test.ts` (7 tests).
+Why: Complete all remaining partially completed gaps in Stage B before the 3 PM release deadline.
+Key evidence: `pnpm lint` PASS (0 errors); `pnpm test` PASS (18 test files, 110/110 passing); `pnpm build` PASS (all 7 packages compiled to ESM/CJS/DTS without errors).
+
 ## [2026-10-01 17:45]
 
 ### [Category: Docs] — Stage B status verification & progress tracker update

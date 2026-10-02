@@ -13,9 +13,15 @@ export class TaskRepository {
   constructor(private db: ISqliteDatabase) {}
 
   public createTaskRun(id: string, sessionId: string, prompt: string, status = 'created'): void {
+    // Upsert: a run id can be re-entered when planning is retried after a
+    // pool-exhaustion pause re-plans under the original run id (GAP-002).
     this.db.prepare(`
       INSERT INTO task_run (id, session_id, prompt, plan_approved_at, status)
       VALUES (?, ?, ?, NULL, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        session_id = excluded.session_id,
+        prompt = excluded.prompt,
+        status = excluded.status
     `).run(id, sessionId, prompt, status);
   }
 

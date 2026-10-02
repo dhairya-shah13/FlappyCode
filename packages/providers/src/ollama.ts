@@ -6,16 +6,59 @@ import {
   HealthInfo,
   ProviderConnector,
 } from './types.js';
+import { PROVIDER_PROFILES } from './profiles.js';
+import { USER_AGENT } from './user-agent.js';
 
 export class OllamaConnector implements ProviderConnector {
   public readonly type = 'ollama';
 
-  public async authenticate(cfg: ProviderConfig): Promise<AuthResult> {
-    const baseUrl = (cfg.base_url || 'http://localhost:11434').replace(/\/+$/, '');
+  /**
+   * Resolve the base URL through the provider profile layer so Ollama Cloud
+   * (https://ollama.com) and local Ollama (http://localhost:11434) share one
+   * connector — differences live in the profile, not in branching code.
+   */
+  private resolveBaseUrl(cfg: ProviderConfig): string {
+    const profile = PROVIDER_PROFILES[cfg.id] || PROVIDER_PROFILES[cfg.type];
+    return (cfg.base_url || profile?.defaultBaseUrl || 'http://localhost:11434').replace(/\/+$/, '');
+  }
+
+  /** Cloud profiles require `Authorization: Bearer <key>`; local does not. */
+  private buildHeaders(apiKey?: string): Record<string, string> {
+    const headers: Record<string, string> = { 'User-Agent': USER_AGENT };
+    if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+    return headers;
+  }
+
+  public async authenticate(cfg: ProviderConfig, apiKey?: string): Promise<AuthResult> {
+    const profile = PROVIDER_PROFILES[cfg.id] || PROVIDER_PROFILES[cfg.type];
+    const baseUrl = this.resolveBaseUrl(cfg);
     const url = `${baseUrl}/api/tags`;
 
+    // GAP-039/GAP-034: a cloud profile without a key can never authenticate —
+    // fail fast with an actionable message instead of a bare 401.
+    if (profile && !profile.isLocal && !apiKey) {
+      return {
+        success: false,
+        error: 'Ollama Cloud requires an API key (Authorization: Bearer). Add one with: flappycode providers add ollama-cloud --key <OLLAMA_API_KEY>',
+        category: 'auth',
+      };
+    }
+
     try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
+      const res = await fetch(url, {
+        headers: this.buildHeaders(apiKey),
+        signal: AbortSignal.timeout(4000),
+      });
+      if (res.status === 401 || res.status === 403) {
+        return {
+          success: false,
+          error: `Ollama rejected the API key (${res.status}).`,
+          category: 'auth',
+        };
+      }
+      if (res.status === 429) {
+        return { success: false, error: 'Rate limit reached on authentication (429).', category: 'rate_limited' };
+      }
       if (!res.ok) {
         return { success: false, error: `Ollama returned status ${res.status}`, category: 'other' };
       }
@@ -25,11 +68,14 @@ export class OllamaConnector implements ProviderConnector {
     }
   }
 
-  public async listModels(cfg: ProviderConfig): Promise<RawModel[]> {
-    const baseUrl = (cfg.base_url || 'http://localhost:11434').replace(/\/+$/, '');
+  public async listModels(cfg: ProviderConfig, apiKey?: string): Promise<RawModel[]> {
+    const baseUrl = this.resolveBaseUrl(cfg);
     const url = `${baseUrl}/api/tags`;
 
-    const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+    const res = await fetch(url, {
+      headers: this.buildHeaders(apiKey),
+      signal: AbortSignal.timeout(6000),
+    });
     if (!res.ok) {
       throw new Error(`Failed to list Ollama models: HTTP ${res.status}`);
     }
@@ -64,9 +110,10 @@ export class OllamaConnector implements ProviderConnector {
 
   public async *complete(
     cfg: ProviderConfig,
-    req: CompletionRequest
+    req: CompletionRequest,
+    apiKey?: string
   ): AsyncIterable<CompletionChunk> {
-    const baseUrl = (cfg.base_url || 'http://localhost:11434').replace(/\/+$/, '');
+    const baseUrl = this.resolveBaseUrl(cfg);
     // Ollama natively supports /api/chat with streaming and tool support
     const url = `${baseUrl}/api/chat`;
 
@@ -91,7 +138,7 @@ export class OllamaConnector implements ProviderConnector {
 
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...this.buildHeaders(apiKey), 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
       signal: req.signal,
     });
@@ -155,9 +202,9 @@ export class OllamaConnector implements ProviderConnector {
     }
   }
 
-  public async healthCheck(cfg: ProviderConfig): Promise<HealthInfo> {
+  public async healthCheck(cfg: ProviderConfig, apiKey?: string): Promise<HealthInfo> {
     const start = Date.now();
-    const auth = await this.authenticate(cfg);
+    const auth = await this.authenticate(cfg, apiKey);
     const latency = Date.now() - start;
 
     return {
@@ -171,6 +218,7 @@ export class OllamaConnector implements ProviderConnector {
   public static async detectLocalServer(port = 11434): Promise<boolean> {
     try {
       const res = await fetch(`http://localhost:${port}/api/tags`, {
+        headers: { 'User-Agent': USER_AGENT },
         signal: AbortSignal.timeout(1500),
       });
       return res.ok;

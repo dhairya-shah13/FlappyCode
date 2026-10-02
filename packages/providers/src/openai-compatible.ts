@@ -8,6 +8,7 @@ import {
   QuotaInfo,
 } from './types.js';
 import { PROVIDER_PROFILES } from './profiles.js';
+import { USER_AGENT } from './user-agent.js';
 
 export class OpenAICompatibleConnector implements ProviderConnector {
   public readonly type = 'openai-compatible';
@@ -19,7 +20,7 @@ export class OpenAICompatibleConnector implements ProviderConnector {
     const url = `${baseUrl.replace(/\/+$/, '')}${discoveryPath}`;
 
     const headers: Record<string, string> = {
-      'User-Agent': 'flappycode/0.1.0',
+      'User-Agent': USER_AGENT,
     };
     if (apiKey) {
       headers['Authorization'] = `Bearer ${apiKey}`;
@@ -58,7 +59,7 @@ export class OpenAICompatibleConnector implements ProviderConnector {
     const url = `${baseUrl.replace(/\/+$/, '')}${discoveryPath}`;
 
     const headers: Record<string, string> = {
-      'User-Agent': 'flappycode/0.1.0',
+      'User-Agent': USER_AGENT,
     };
     if (apiKey) {
       headers['Authorization'] = `Bearer ${apiKey}`;
@@ -129,7 +130,7 @@ export class OpenAICompatibleConnector implements ProviderConnector {
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'User-Agent': 'flappycode/0.1.0',
+      'User-Agent': USER_AGENT,
     };
     if (apiKey) {
       headers['Authorization'] = `Bearer ${apiKey}`;
@@ -233,7 +234,7 @@ export class OpenAICompatibleConnector implements ProviderConnector {
       const url = `${baseUrl.replace(/\/+$/, '')}/models`;
 
       const headers: Record<string, string> = {
-        'User-Agent': 'flappycode/0.1.0',
+        'User-Agent': USER_AGENT,
       };
       if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
 

@@ -152,6 +152,30 @@ export const PROVIDER_PROFILES: Record<string, ProviderProfile> = {
     isLocal: true,
     freeClassifierRule: () => true, // Local models are free by definition
   },
+  // GAP-034: Ollama Cloud (hosted) as a distinct profile from local Ollama.
+  // Sources (docs.ollama.com, verified during implementation):
+  // - Base URL: cloud REST base is https://ollama.com/api (OllamaConnector
+  //   appends /api/tags and /api/chat, so the profile stores the host root).
+  // - Auth: "Cloud requests need an API key" via Authorization: Bearer.
+  // - Data handling: "Ollama processes cloud prompts and responses to answer
+  //   your requests. We do not use them to train models."
+  // - Classification: the Free plan includes "Starter usage credits included"
+  //   that reset monthly and cover "access to starter models" on a free tier —
+  //   i.e. free-but-rate-limited usage, not unlimited free. The
+  //   freeClassifierRule therefore yields `rate_limited_free` through the
+  //   classifier's non-local branch (id has no ':free' suffix, isLocal=false).
+  'ollama-cloud': {
+    id: 'ollama-cloud',
+    type: 'ollama',
+    displayName: 'Ollama Cloud',
+    defaultBaseUrl: 'https://ollama.com',
+    discoveryPath: '/api/tags',
+    authHeaderPrefix: 'Bearer',
+    defaultDataUsePolicy: 'no_training',
+    isLocal: false,
+    rateLimitRpm: 30,
+    freeClassifierRule: () => true,
+  },
   mock: {
     id: 'mock',
     type: 'mock',

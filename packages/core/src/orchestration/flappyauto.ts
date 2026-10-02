@@ -234,11 +234,13 @@ export class FlappyAutoOrchestrator {
 
   public async startRun(
     prompt: string,
-    options: string | { model?: string; sessionId?: string } = {}
+    options: string | { model?: string; sessionId?: string } = {},
+    /** GAP-002: reuse the paused run's id when re-planning after exhaustion. */
+    reuseRunId?: string
   ): Promise<PlanProposal> {
     const opts = typeof options === 'string' ? { sessionId: options } : options;
     this.lastPrompt = { prompt, options: opts };
-    const runId = `run_${Date.now()}`;
+    const runId = reuseRunId || `run_${Date.now()}`;
     this.activeRunId = runId;
     this.modelsUsed.clear();
     this.paidCallsCount = 0;
@@ -256,7 +258,9 @@ export class FlappyAutoOrchestrator {
     this.opts.eventBus.emit({ type: 'run.started', run_id: runId, prompt, timestamp: Date.now() });
 
     // Session creation + message persistence (FR-CTX-001)
-    let sessionId = opts.sessionId;
+    // GAP-002: when re-planning a paused run under the same id, keep the
+    // original session instead of opening a duplicate one.
+    let sessionId = opts.sessionId ?? (reuseRunId ? this.activeSessionId ?? undefined : undefined);
     if (sessionId && !this.opts.sessionRepo?.getSession(sessionId)) {
       sessionId = undefined;
     }
@@ -466,7 +470,9 @@ export class FlappyAutoOrchestrator {
       return null; // exact paused run resumes through executeApprovedPlan
     }
     if (this.lastPrompt) {
-      return this.startRun(this.lastPrompt.prompt, this.lastPrompt.options);
+      // Planning-stage pause: re-plan under the SAME run id so the original
+      // run state/identity survives the resolution boundary (GAP-002).
+      return this.startRun(this.lastPrompt.prompt, this.lastPrompt.options, runId);
     }
     return null;
   }

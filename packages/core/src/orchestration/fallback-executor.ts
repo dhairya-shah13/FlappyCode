@@ -387,7 +387,7 @@ export class FallbackExecutor {
     let connector: ProviderConnector;
     let apiKey: string | undefined;
     try {
-      connector = this.opts.registry.getConnector(providerCfg.type);
+      connector = this.opts.registry.getConnector(providerCfg.id);
       apiKey = (await this.opts.secretStore.resolveSecretRef(providerCfg.api_key_ref)) || undefined;
     } catch (err: any) {
       this.opts.registry.recordModelError(model.provider_id, model.model_id, FAILURE_COOLDOWN_SECONDS.auth);
