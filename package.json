@@ -2,6 +2,7 @@
   "name": "flappycode-workspace",
   "version": "0.1.0",
   "private": true,
+  "license": "Apache-2.0",
   "description": "Multi-provider, multi-agent free model aggregator and coding assistant",
   "scripts": {
     "build": "pnpm -r run build",

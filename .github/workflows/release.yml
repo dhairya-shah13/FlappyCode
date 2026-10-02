@@ -1,0 +1,64 @@
+# ==============================================================================
+# FlappyCode Release Workflow
+# 
+# IMPORTANT NOTICE:
+# Publishing to npm is DEFERRED until internal human dev team tests and approves.
+# This workflow is strictly MANUAL (workflow_dispatch) and requires explicit
+# confirmation input. It will NEVER be triggered automatically by push or git tags.
+# ==============================================================================
+
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_publish:
+        description: 'Type "CONFIRM" to authorize publishing to npm registry'
+        required: true
+        default: 'NO'
+      tag:
+        description: 'npm release tag (e.g. rc, latest)'
+        required: true
+        default: 'rc'
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    if: github.event.inputs.confirm_publish == 'CONFIRM'
+    environment: npm-production
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://registry.npmjs.org'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run verification gates
+        run: |
+          pnpm lint
+          pnpm build
+          pnpm test
+
+      - name: Pack and publish flappycode
+        run: |
+          cd packages/cli
+          pnpm publish --tag ${{ github.event.inputs.tag }} --provenance --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

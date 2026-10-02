@@ -2,8 +2,17 @@
   "name": "@flappycode/core",
   "version": "0.1.0",
   "description": "Core orchestration engine: registry, router, flappyauto, agents, rules, and root-jailed tools",
+  "license": "Apache-2.0",
   "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts",
     "clean": "rimraf dist"

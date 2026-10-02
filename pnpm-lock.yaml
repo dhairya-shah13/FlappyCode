@@ -29,6 +29,13 @@ importers:
 
   packages/cli:
     dependencies:
+      '@napi-rs/keyring':
+        specifier: ^2.1.0
+        version: 2.1.0
+      commander:
+        specifier: ^12.1.0
+        version: 12.1.0
+    devDependencies:
       '@flappycode/core':
         specifier: workspace:*
         version: link:../core
@@ -47,10 +54,6 @@ importers:
       '@flappycode/tui':
         specifier: workspace:*
         version: link:../tui
-      commander:
-        specifier: ^12.1.0
-        version: 12.1.0
-    devDependencies:
       rimraf:
         specifier: ^6.0.1
         version: 6.1.3
@@ -60,6 +63,10 @@ importers:
       typescript:
         specifier: ^5.6.3
         version: 5.9.3
+    optionalDependencies:
+      better-sqlite3:
+        specifier: ^11.8.1
+        version: 11.10.0
 
   packages/core:
     dependencies:
