@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented in this file in reverse chronological order.
 
+## [2026-10-02 18:00]
+
+### [Category: Feature] — Stage E (CLI & Server Correctness) full completion
+What changed: Fully implemented and integrated all 5 Stage E gaps across `@flappycode/protocol`, `@flappycode/storage`, `@flappycode/providers`, `@flappycode/core`, `@flappycode/server`, and `@flappycode/cli`:
+- **GAP-024 (Headless Exit Code Contract)**: Implemented deterministic exit codes across all execution paths: `0` (successful completion), `1` (task/node failure), `2` (usage error: missing prompt, invalid option, unknown command), `3` (plan approval required without `--approve-plan`), `4` (free model pool exhausted), `5` (no providers available), and `130` (cancellation via SIGINT / `run.cancelled`). Handled Commander exit overrides and unknown subcommand routing without silently launching the TUI.
+- **GAP-051 (Structured `run.failed` in JSON Mode)**: Enhanced `RunFailedEventSchema` in `@flappycode/protocol` with `error_details` matching `StructuredErrorSchema` (`code`, `category`, `what`, `why`, `next`). Ensured pure NDJSON stdout streaming without human banner contamination.
+- **GAP-052 (Honest Server Command Handling)**: Implemented full 15-command dispatch matrix in `FlappyServer` (`submitPrompt`, `approvePlan`, `rejectPlan`, `executePlan`, `approveDiff`, `rejectDiff`, `grantPermission`, `answerQuestion`, `cancelRun`, `addProvider`, `refreshProviders`, `pinModel`, `resolvePoolExhausted`, `setModelOverride`, `deleteModelOverride`). Dispatches honestly to the core engine, resolves deferred diff and permission promises, surfaces real failures, and rejects malformed or unsupported payloads with 400.
+- **GAP-056 (Local Debug Logging Subsystem)**: Built `Logger` in `@flappycode/core` with structured newline-delimited JSON records, platform-aware log directory resolution (`FLAPPYCODE_LOG_DIR`, `%LOCALAPPDATA%`, `XDG_STATE_HOME`, `Library/Logs`), size-based rotation with configurable `maxSizeBytes` and `maxFiles`, and `SecretGuard` final-boundary redaction. Wired `--debug` CLI option to stream engine events into `flappycode.log` without polluting stdout.
+- **GAP-058 (Consistent Error Formatting)**: Created central `FlappyError` and stable `ErrorCodes` catalogue in `@flappycode/core`. Implemented formatters for CLI (`formatErrorForCli` with What/Why/Next structure), JSON (`formatErrorForJson`), and HTTP (`formatErrorForHttp` mapping error categories to status codes 400, 401, 409, 500, 502 with structured payload).
+- Added 4 new unit and integration test files (25 new passing tests): `stage-e-logger.test.ts`, `stage-e-errors.test.ts`, `stage-e-server.test.ts`, and `stage-e-headless.test.ts`.
+Why: Fulfill all Stage E requirements of Phase 1 CLI & Server Correctness.
+Key evidence: `pnpm lint` PASS (0 errors); `pnpm test` PASS (44 test files, 293/293 passing); `pnpm build` PASS (all 7 packages compiled without errors).
+
 ## [2026-10-02 15:45]
 
 ### [Category: Feature] — Stage D (Rules & Product Interaction) full completion

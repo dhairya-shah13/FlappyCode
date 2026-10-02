@@ -185,14 +185,14 @@ gantt
 - [ ] **P1-I2** (P0) Release pipeline (provenance publish), install-test on 3 OSes, publish **`0.1.0-rc.1`** — 1 d — **24 Oct**
 
 **P1 backlog — only after all P0 are green, in this order (deadline: freeze 21 Oct; anything unfinished moves to Phase 2 "carry-over"):**
-- [ ] **P1-H1** (P1) Headless `flappycode run` (`--json`, `--approve-plan`, exit codes) — 1.5 d *(recommended first: enables CI-driven testing)*
-- [ ] **P1-H2** (P1) `flappycode serve` HTTP/SSE + OpenAPI (needed for Phase 3) — 2.5 d
-- [ ] **P1-B10** (P1) Provider health/latency/error-rate — 1 d
+- [x] **P1-H1** (P1) Headless `flappycode run` (`--json`, `--approve-plan`, exit codes) — 1.5 d *(recommended first: enables CI-driven testing)*
+- [x] **P1-H2** (P1) `flappycode serve` HTTP/SSE + OpenAPI (needed for Phase 3) — 2.5 d
+- [x] **P1-B10** (P1) Provider health/latency/error-rate — 1 d
 - [ ] **P1-B11** (P1) Tool-call capability probe — 1 d
 - [ ] **P1-D8** (P1) Codebase-Analyst agent + semantic index — 2 d
 - [ ] **P1-E7** (P1) LSP diagnostics — 2 d
 - [ ] **P1-E8** (P1) MCP client — 2 d
-- [ ] **P1-F6** (P1) Category-specific rule activation (repo-type detection) — 1 d
+- [x] **P1-F6** (P1) Category-specific rule activation (repo-type detection) — 1 d
 - [ ] **P1-D9** (P1) Reviewer prefers a different model than Coder — 0.5 d
 - [ ] **P2 (deferred by default):** Researcher/Browser agent, vision/screenshot input, plugin system, MCP server, IDE extensions
 

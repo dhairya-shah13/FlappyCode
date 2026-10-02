@@ -3,8 +3,10 @@ import {
   FileDiff,
   PaidGrant,
   PlanProposal,
+  StructuredError,
   TaskNode,
 } from '@flappycode/protocol';
+import { ErrorCodes } from '../errors/flappy-error.js';
 import { ModelRegistry } from '../registry/model-registry.js';
 import { DeterministicRouter } from '../router/router.js';
 import { PlanGate } from '../rules/plan-gate.js';
@@ -1544,23 +1546,108 @@ export class FlappyAutoOrchestrator {
     }
   }
 
-  private emitRunFailed(runId: string, error: string, reason?: string): void {
+  private deriveStructuredError(error: string, reason?: string): StructuredError {
+    const lower = error.toLowerCase();
+    const reasonLower = (reason || '').toLowerCase();
+
+    if (reasonLower === 'pool_exhausted' || lower.includes('pool is exhausted') || lower.includes('free model pool')) {
+      return {
+        code: ErrorCodes.POOL_EXHAUSTED,
+        category: 'pool_exhausted',
+        what: error,
+        why: 'All eligible free-tier providers are exhausted, rate-limited, or unavailable.',
+        next: 'Connect an additional free provider with "flappycode providers add" or authorize paid models.',
+      };
+    }
+
+    if (reasonLower === 'feedback_escalated' || lower.includes('feedback loop escalated')) {
+      return {
+        code: ErrorCodes.FEEDBACK_ESCALATED,
+        category: 'execution',
+        what: error,
+        why: 'The automated reviewer rejected successive iterations without resolution.',
+        next: 'Refine your prompt to provide clearer constraints or simplify the requested changes.',
+      };
+    }
+
+    if (reasonLower === 'rule_conflict' || lower.includes('rule conflict')) {
+      return {
+        code: ErrorCodes.PLANNER_FAILED,
+        category: 'planner',
+        what: error,
+        why: 'Project rules conflict with each other or with system constraints.',
+        next: 'Review and resolve conflicting rule files in .flappycode/rules.',
+      };
+    }
+
+    if (lower.includes('without staging changes') || lower.includes('no changes were staged')) {
+      return {
+        code: ErrorCodes.EXECUTION_NO_CHANGES,
+        category: 'execution',
+        what: error,
+        why: 'The model completed execution without modifying any tracked project files.',
+        next: 'Clarify which files should be created or updated in your prompt.',
+      };
+    }
+
+    if (lower.includes('diff approval denied') || lower.includes('diff rejected')) {
+      return {
+        code: ErrorCodes.DIFF_REJECTED,
+        category: 'approval_required',
+        what: error,
+        why: 'The user or caller rejected the proposed diff review.',
+        next: 'Adjust the prompt or accept the proposed changes when prompted.',
+      };
+    }
+
+    if (lower.includes('plan approval denied') || lower.includes('plan rejected') || lower.includes('not approved')) {
+      return {
+        code: ErrorCodes.APPROVAL_REQUIRED,
+        category: 'approval_required',
+        what: error,
+        why: 'The execution plan was not approved.',
+        next: 'Pass --approve-plan in headless mode or approve the plan interactively in the TUI.',
+      };
+    }
+
+    if (reasonLower === 'no_providers' || lower.includes('no providers') || lower.includes('no model')) {
+      return {
+        code: ErrorCodes.NO_PROVIDERS,
+        category: 'provider',
+        what: error,
+        why: 'No active providers or models are available for this task.',
+        next: 'Add a provider with "flappycode providers add" before starting a run.',
+      };
+    }
+
+    return {
+      code: ErrorCodes.EXECUTION_FAILED,
+      category: 'execution',
+      what: error,
+      why: reason || undefined,
+      next: 'Check the debug log with --debug for diagnostic details.',
+    };
+  }
+
+  private emitRunFailed(runId: string, error: string, reason?: string, errorDetails?: StructuredError): void {
     if (this.emittedRunFailed.has(runId)) return;
     this.emittedRunFailed.add(runId);
+    const details = errorDetails ?? this.deriveStructuredError(error, reason);
     this.opts.eventBus.emit({
       type: 'run.failed',
       run_id: runId,
       error,
       reason,
+      error_details: details,
       timestamp: Date.now(),
     });
   }
 
-  private failRun(runId: string, error: string, reason: string): void {
+  public failRun(runId: string, error: string, reason: string, errorDetails?: StructuredError): void {
     if (this.opts.taskRepo) {
       try { this.opts.taskRepo.setRunStatus(runId, 'failed'); } catch { /* ignore */ }
     }
-    this.emitRunFailed(runId, error, reason);
+    this.emitRunFailed(runId, error, reason, errorDetails);
   }
 
   /** GAP-002: persist the paused state and expose exactly two resolution actions. */

@@ -104,6 +104,12 @@ export const DeleteModelOverrideCommandSchema = z.object({
 });
 export type DeleteModelOverrideCommand = z.infer<typeof DeleteModelOverrideCommandSchema>;
 
+export const ExecutePlanCommandSchema = z.object({
+  type: z.literal('executePlan'),
+  run_id: z.string(),
+});
+export type ExecutePlanCommand = z.infer<typeof ExecutePlanCommandSchema>;
+
 export const CommandSchema = z.discriminatedUnion('type', [
   SubmitPromptCommandSchema,
   ApprovePlanCommandSchema,
@@ -119,6 +125,7 @@ export const CommandSchema = z.discriminatedUnion('type', [
   ResolvePoolExhaustedCommandSchema,
   SetModelOverrideCommandSchema,
   DeleteModelOverrideCommandSchema,
+  ExecutePlanCommandSchema,
 ]);
 export type Command = z.infer<typeof CommandSchema>;
 

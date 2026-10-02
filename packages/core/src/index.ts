@@ -31,3 +31,5 @@ export * from './orchestration/flappyauto.js';
 export * from './config/config-loader.js';
 export * from './registry/scheduler.js';
 export * from './agents/agent-loader.js';
+export * from './errors/flappy-error.js';
+export * from './logging/logger.js';

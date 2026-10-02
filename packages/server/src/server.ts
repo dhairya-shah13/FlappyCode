@@ -1,6 +1,6 @@
 import http from 'node:http';
 import crypto from 'node:crypto';
-import { FlappyEngine } from '@flappycode/core';
+import { FlappyEngine, FlappyError, ErrorCodes, formatErrorForHttp } from '@flappycode/core';
 import { CommandSchema, FlappyEvent } from '@flappycode/protocol';
 
 export interface ServerOptions {
@@ -115,8 +115,30 @@ export class FlappyServer {
       });
       req.on('end', async () => {
         try {
-          const json = JSON.parse(body);
-          const cmd = CommandSchema.parse(json);
+          let json: any;
+          try {
+            json = JSON.parse(body);
+          } catch {
+            throw new FlappyError({
+              code: ErrorCodes.COMMAND_INVALID,
+              category: 'command',
+              what: 'Invalid JSON request body.',
+              next: 'Ensure the request body contains valid JSON.',
+            });
+          }
+
+          const parsed = CommandSchema.safeParse(json);
+          if (!parsed.success) {
+            const issues = parsed.error.issues.map((i) => `${i.path.join('.') || 'body'}: ${i.message}`).join('; ');
+            throw new FlappyError({
+              code: ErrorCodes.COMMAND_INVALID,
+              category: 'command',
+              what: `Invalid command payload: ${issues}`,
+              next: 'Check command payload schema.',
+            });
+          }
+
+          const cmd = parsed.data;
 
           if (cmd.type === 'submitPrompt') {
             const plan = await this.engine.submitPrompt(cmd.prompt);
@@ -126,53 +148,74 @@ export class FlappyServer {
             this.engine.approvePlan(cmd.run_id);
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ success: true }));
+          } else if (cmd.type === 'rejectPlan') {
+            this.engine.rejectPlan(cmd.run_id, cmd.reason);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true }));
+          } else if (cmd.type === 'executePlan') {
+            const plan = this.engine.orchestrator.getPendingPlan(cmd.run_id);
+            if (!plan) {
+              throw new FlappyError({
+                code: ErrorCodes.RUN_NOT_FOUND,
+                category: 'command',
+                what: `No pending plan found for run '${cmd.run_id}'.`,
+                next: 'Submit a prompt first to generate a plan.',
+              });
+            }
+            this.engine.executePlan(cmd.run_id).catch(() => {});
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true, run_id: cmd.run_id }));
+          } else if (cmd.type === 'approveDiff') {
+            this.engine.approveDiff(cmd.run_id);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true }));
+          } else if (cmd.type === 'rejectDiff') {
+            this.engine.rejectDiff(cmd.run_id, cmd.reason);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true }));
+          } else if (cmd.type === 'answerQuestion') {
+            const ok = this.engine.answerQuestion(cmd.question_id, cmd.answer);
+            if (!ok) {
+              throw new FlappyError({
+                code: ErrorCodes.INVALID_STATE,
+                category: 'command',
+                what: `No pending question '${cmd.question_id}'.`,
+                next: 'Verify the question_id or check active questions.',
+              });
+            }
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true }));
+          } else if (cmd.type === 'grantPermission') {
+            const decision: 'allow' | 'always' | 'deny' = cmd.always_allow
+              ? 'always'
+              : (cmd.approved ? 'allow' : 'deny');
+            this.engine.grantPermission(cmd.permission_id, decision);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true }));
           } else if (cmd.type === 'resolvePoolExhausted') {
-            // GAP-002: real engine execution — never acknowledge without doing.
-            try {
-              const result = await this.engine.resolvePoolExhausted(
-                cmd.run_id,
-                cmd.action,
-                { confirm: cmd.confirm, modelId: cmd.paid_model_id }
-              );
-              res.writeHead(200, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({ success: true, ...result }));
-            } catch (err: any) {
-              // Honest propagation: no paused run, unconfirmed paid action,
-              // still-exhausted pool, etc. — never a fake success.
-              res.writeHead(409, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({ success: false, error: err.message }));
-            }
+            const result = await this.engine.resolvePoolExhausted(
+              cmd.run_id,
+              cmd.action,
+              { confirm: cmd.confirm, modelId: cmd.paid_model_id }
+            );
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true, ...result }));
           } else if (cmd.type === 'setModelOverride') {
-            try {
-              const result = this.engine.setModelOverride(cmd.model_id, cmd.tier);
-              res.writeHead(200, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({ success: true, ...result }));
-            } catch (err: any) {
-              res.writeHead(400, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({ success: false, error: err.message }));
-            }
+            const result = this.engine.setModelOverride(cmd.model_id, cmd.tier);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true, ...result }));
           } else if (cmd.type === 'deleteModelOverride') {
-            try {
-              const result = this.engine.deleteModelOverride(cmd.model_id);
-              res.writeHead(200, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({ success: true, ...result }));
-            } catch (err: any) {
-              res.writeHead(400, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({ success: false, error: err.message }));
-            }
+            const result = this.engine.deleteModelOverride(cmd.model_id);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true, ...result }));
           } else if (cmd.type === 'cancelRun') {
             this.engine.cancelRun(cmd.run_id);
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ success: true }));
           } else if (cmd.type === 'addProvider') {
-            try {
-              const models = await this.engine.addProvider(cmd.provider, cmd.api_key);
-              res.writeHead(200, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({ success: true, models }));
-            } catch (err: any) {
-              res.writeHead(400, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({ success: false, error: err.message }));
-            }
+            const models = await this.engine.addProvider(cmd.provider, cmd.api_key);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true, models }));
           } else if (cmd.type === 'refreshProviders') {
             await this.engine.refreshProviders();
             res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -182,12 +225,17 @@ export class FlappyServer {
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ success: true }));
           } else {
-            res.writeHead(400, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ success: false, error: `Command '${(cmd as any).type}' is not supported.` }));
+            throw new FlappyError({
+              code: ErrorCodes.COMMAND_UNSUPPORTED,
+              category: 'command',
+              what: `Command '${(cmd as any).type}' is not supported.`,
+              next: 'Review supported commands in /openapi.json.',
+            });
           }
         } catch (err: any) {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: err.message }));
+          const { status, body: errBody } = formatErrorForHttp(err);
+          res.writeHead(status, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(errBody));
         }
       });
       return;

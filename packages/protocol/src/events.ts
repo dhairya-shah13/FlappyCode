@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { PlanProposalSchema, DiffReviewProposalSchema, TaskNodeSchema } from './tasks';
 import { ModelSchema } from './models';
+import { StructuredErrorSchema } from './errors';
 
 export const SessionStartedEventSchema = z.object({
   type: z.literal('session.started'),
@@ -152,6 +153,7 @@ export const RunFailedEventSchema = z.object({
   run_id: z.string(),
   error: z.string(),
   reason: z.string().optional(),
+  error_details: StructuredErrorSchema.optional(),
   timestamp: z.number().int(),
 });
 export type RunFailedEvent = z.infer<typeof RunFailedEventSchema>;

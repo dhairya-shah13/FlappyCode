@@ -24,6 +24,9 @@ export interface ISqliteDatabase {
 }
 
 export function getDefaultDatabasePath(): string {
+  if (process.env.FLAPPYCODE_DB_PATH) {
+    return process.env.FLAPPYCODE_DB_PATH;
+  }
   const isWindows = process.platform === 'win32';
   let baseDir: string;
   if (isWindows) {

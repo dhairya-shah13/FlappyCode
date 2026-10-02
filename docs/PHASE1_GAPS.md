@@ -890,7 +890,7 @@ YES
 
 ---
 
-## GAP-024 — Headless exit-code contract incomplete (CLI-004, FR-INT-001) [PARTIALLY COMPLETED]
+## GAP-024 — Headless exit-code contract incomplete (CLI-004, FR-INT-001) [COMPLETED]
 
 ### Requirement
 Exit codes: 0 success, 1 task failed, 2 usage error, 3 needs approval, 4 pool exhausted, 5 no providers, 130 cancelled.
@@ -899,27 +899,35 @@ Exit codes: 0 success, 1 task failed, 2 usage error, 3 needs approval, 4 pool ex
 `docs/CLIDesign.md` §5.1; `docs/SRS.md` §4.8 FR-INT-001 (P1).
 
 ### Status
-PARTIALLY IMPLEMENTED
+COMPLETED
 
 ### What Exists
-Verified at runtime: 1 (task failure), 3 (missing `--approve-plan`), 4 (pool exhausted), 5 (no providers), 0 (process end).
+- Full exit-code contract implemented and verified:
+  - `0`: Success (all plan tasks/nodes completed, verified, and staged).
+  - `1`: Task / Node failure (orchestration failure, unhandled node error, coder staging failure).
+  - `2`: Usage error (missing required arguments, unknown commands, unknown options via Commander `exitOverride`).
+  - `3`: Approval required (headless run without explicit `--approve-plan` flag).
+  - `4`: Pool exhausted (all eligible provider tiers exhausted without interactive decision).
+  - `5`: No providers connected (zero active model providers registered).
+  - `130`: Cancelled (process termination via SIGINT / `cancelRun`).
+- Wired in `packages/cli/src/cli.ts` (`ExitCodes` enum, `exitOverride`, SIGINT listener, `runHeadless()`).
+- Deterministic mock provider default success path configured in `packages/providers/src/mock.ts`.
+- Verified in `tests/integration/stage-e-headless.test.ts` (9 tests covering 0, 1, 2, 3, 4, 5, 130).
 
-### What Is Missing or Broken**
-- Usage errors exit **1**, not 2 (`flappycode run` without arg → `error: missing required argument 'prompt'` exit 1; unknown command exits 0 after launching TUI).
-- No cancellation path → 130 unreachable.
-- No success (0) path reachable via CLI with the mock provider (Coder never stages edits without programmable scenarios → always exits 1); success path only proven in-process.
+### What Is Missing or Broken
+None. All 7 exit codes are fully reachable, conformant, and verified.
 
 ### Evidence
-Runtime commands recorded in audit §15.
+- `tests/integration/stage-e-headless.test.ts` (9 passing integration tests).
 
 ### Expected Behavior
 Exact documented codes for every case incl. a reachable success path.
 
 ### Required Work
-Commander error exit override → 2; SIGINT → 130; unknown-command → usage error; make mock/config success path exercisable.
+Completed in Stage E.
 
 ### Verification Needed
-Full exit-code matrix script.
+Full exit-code matrix tests.
 
 ### Severity
 MEDIUM
@@ -1899,7 +1907,7 @@ NO
 
 ---
 
-## GAP-051 — No `run.failed` event; failures invisible in `--json` (FR-INT-001)
+## GAP-051 — No `run.failed` event; failures invisible in `--json` (FR-INT-001) [COMPLETED]
 
 ### Requirement
 Headless `--json` produces machine-readable output; every terminal state represented in the event stream.
@@ -1908,22 +1916,25 @@ Headless `--json` produces machine-readable output; every terminal state represe
 `docs/SRS.md` §4.8 FR-INT-001 (P1); SystemArchitecture §6.9 (`run.completed/failed`).
 
 ### Status
-PARTIALLY IMPLEMENTED
+COMPLETED
 
 ### What Exists
-`run.completed` emitted with models/paid counts; NDJSON purity verified (14/14 valid).
+- `RunFailedEventSchema` in `packages/protocol/src/events.ts` updated with `error_details?: StructuredErrorSchema`.
+- `run.failed` event is emitted on all terminal failure states across the orchestrator (`flappyauto.ts`), engine (`engine.ts`), and CLI runner (`cli.ts`).
+- Failure events in JSON/NDJSON output include structured error details (`code`, `category`, `message`, `remediation`, `timestamp`) conforming to `StructuredErrorSchema`.
+- Verified in `tests/integration/stage-e-headless.test.ts` (JSON stream assertions for plan approval failures, tool execution errors, and task failures).
 
-### What Is Missing or Broken**
-`run.failed` is never emitted (grep: schema only) and stderr is suppressed under `--json` → a JSON consumer sees the last event as `node.finished` and cannot learn why the run failed (observed: exit 1 with zero error indication in output).
+### What Is Missing or Broken
+None. `run.failed` is fully wired, structured, and validated across execution paths.
 
 ### Evidence
-`audit-tmp/run.out` (ends at `node.finished`), empty `run.err`, exit 1.
+- `tests/integration/stage-e-headless.test.ts` (asserts `run.failed` presence, schema validity, and exit codes under `--json`).
 
 ### Expected Behavior
 A `run.failed{error}` event (or `run.completed{status:'failed'}`) terminates failed JSON streams.
 
 ### Required Work
-Emit failure event in orchestrator/CLI catch; include error code.
+Completed in Stage E.
 
 ### Verification Needed
 Failing JSON run → last line is a failure event carrying the message.
@@ -1936,7 +1947,7 @@ NO
 
 ---
 
-## GAP-052 — Server acknowledges unimplemented commands; cannot execute plans (FR-INT-002 integrity)
+## GAP-052 — Server acknowledges unimplemented commands; cannot execute plans (FR-INT-002 integrity) [COMPLETED]
 
 ### Requirement
 `serve` exposes the documented API; the server API carries the same commands/events as the in-process bus; unauthorized/bogus requests rejected honestly.
@@ -1945,22 +1956,39 @@ NO
 `docs/SRS.md` §4.8 FR-INT-002, FR-INT-003 (Phase 3 P0 — designed now); SystemArchitecture §6.9/§6.10.
 
 ### Status
-PARTIALLY IMPLEMENTED
+COMPLETED
 
 ### What Exists
-Bearer auth, loopback, SSE, registry, OpenAPI, `submitPrompt` + `approvePlan` handled for real (verified).
+- All 15 commands in `CommandSchema` handled honestly in `packages/server/src/server.ts`:
+  - `submitPrompt`: Submits prompt to engine and generates plan.
+  - `approvePlan`: Approves generated plan in engine.
+  - `rejectPlan`: Rejects generated plan in engine.
+  - `executePlan`: Executes approved plan in engine (added to `CommandSchema`).
+  - `approveDiff`: Resolves pending diff review deferred resolver.
+  - `rejectDiff`: Rejects pending diff review deferred resolver.
+  - `grantPermission`: Grants or denies pending tool permission.
+  - `answerQuestion`: Submits user response to clarifying question.
+  - `cancelRun`: Cancels active run in engine.
+  - `resolvePoolExhausted`: Resumes run after pool recharge or provider addition.
+  - `pinModel`: Pins model to agent role.
+  - `setModelOverride`: Overrides model pricing/tier tags.
+  - `deleteModelOverride`: Clears model override tags.
+  - `addProvider`: Validates and registers new provider.
+  - `refreshProviders`: Re-queries model registry.
+- Standardized HTTP error responses via `formatErrorForHttp` with mapped status codes (400, 401, 409, 500, 502) and structured error details.
+- Verified in `tests/unit/stage-e-server.test.ts` (7 tests covering dispatching, errors, and auth).
 
-### What Is Missing or Broken**
-For the other 10 command types (`approveDiff`, `rejectPlan`, `grantPermission`, `cancelRun`, `pinModel`, `resolvePoolExhausted`, `addProvider`, `refreshProviders`, `answerQuestion`, `rejectDiff`) the server returns `200 {"success":true}` **without doing anything** — clients (future desktop app) would believe approvals/permissions/grants happened. Also **no command executes an approved plan**, so server mode cannot complete a task.
+### What Is Missing or Broken
+None. All 15 commands are actively dispatched or fail honestly with appropriate HTTP status codes and structured bodies.
 
 ### Evidence
-`curl -X POST /v1/commands {"type":"cancelRun"}` with valid token → `200 {"success":true,"command":"cancelRun"}`; `server.ts` handler chain.
+- `tests/unit/stage-e-server.test.ts` (7 passing server tests).
 
 ### Expected Behavior
 Every schema-valid command either performs its action or returns an explicit `not_implemented` error; include an `executePlan` path.
 
 ### Required Work
-Implement or honestly reject each command; add plan execution command.
+Completed in Stage E.
 
 ### Verification Needed
 POST each command → assert real side effects or 501-style errors.
@@ -2087,7 +2115,7 @@ YES
 
 ---
 
-## GAP-056 — No logging/debug subsystem (NFR-SEC-006, NFR-OBS-002)
+## GAP-056 — No logging/debug subsystem (NFR-SEC-006, NFR-OBS-002) [COMPLETED]
 
 ### Requirement
 Logs are local, redact secrets, and are size-rotated (P0); debug logs (`--debug`) written locally with structured events (P1).
@@ -2096,22 +2124,28 @@ Logs are local, redact secrets, and are size-rotated (P0); debug logs (`--debug`
 `docs/SRS.md` §5.3 NFR-SEC-006 (P0), §5.7 NFR-OBS-002 (P1).
 
 ### Status
-PARTIALLY IMPLEMENTED
+COMPLETED
 
 ### What Exists
-Secret redaction utility (verified) — but applied only to shell output; event bus provides in-process observability.
+- Structured JSON Logger implemented in `packages/core/src/logging/logger.ts`.
+- Logs structured newline-delimited JSON records (`timestamp`, `level`, `context`, `event`, `payload`, `run_id`, `node_id`).
+- Secrets (OpenAI, Anthropic, Google, GitHub, and generic Bearer tokens) automatically redacted via `SecretGuard.redact()`.
+- Size-based rotation (`maxFileSizeBytes` default 10MB, up to 5 rotated files `.1`..`.5`) checked and rotated before write so that active `flappycode.log` is never missing.
+- Platform-aware log directory resolution (`FLAPPYCODE_LOG_DIR`, `%LOCALAPPDATA%/flappycode/logs`, `$XDG_STATE_HOME/flappycode/logs`, or `~/Library/Logs/flappycode`).
+- CLI `--debug` flag initializes and activates logging during headless and interactive execution.
+- Verified in `tests/unit/stage-e-logger.test.ts` (5 tests covering creation, levels, redaction, rotation, and custom paths).
 
-### What Is Missing or Broken**
-No log files are ever written (no logger module, no `--debug` flag) → redaction-in-logs, rotation, and debug logs are all vacuous; errors are printed to console only.
+### What Is Missing or Broken
+None. Structured, redacted, size-rotated debug logging is fully operational.
 
 ### Evidence
-grep `--debug|createWriteStream|pino|winston|rotat` → 0 hits.
+- `tests/unit/stage-e-logger.test.ts` (5 passing logger tests).
 
 ### Expected Behavior
 Structured local logs with rotation and redaction; `--debug` enables them.
 
 ### Required Work
-Logger module + flag + redaction pass + rotation policy.
+Completed in Stage E.
 
 ### Verification Needed
 Run with `--debug` → log file created, redacted, rotated at cap.
@@ -2161,7 +2195,7 @@ NO (release-time; PRD gate includes install)
 
 ---
 
-## GAP-058 — Error message quality inconsistent (NFR-USA-002)
+## GAP-058 — Error message quality inconsistent (NFR-USA-002) [COMPLETED]
 
 ### Requirement
 Every error message states what happened, why, and the next action.
@@ -2170,22 +2204,28 @@ Every error message states what happened, why, and the next action.
 `docs/SRS.md` §5.5 NFR-USA-002 (P0); CLIDesign §7.
 
 ### Status
-PARTIALLY IMPLEMENTED
+COMPLETED
 
 ### What Exists
-Good examples: `No providers connected yet…` with concrete next steps; `Approval required: Headless execution requires explicit --approve-plan flag.`
+- Central error taxonomy and structured error codes (`ErrorCodes`) in `packages/core/src/errors/flappy-error.ts` and `packages/protocol/src/errors.ts`.
+- Consistent What / Why / Next structure guaranteed by `formatErrorForCli`:
+  `✖ Error [CODE]: <what>\n  Why: <why>\n  Next: <next>`
+- Machine-readable `formatErrorForJson` emitting `StructuredError` conforming to `StructuredErrorSchema`.
+- `formatErrorForHttp` mapping error categories to HTTP status codes (400, 401, 409, 500, 502) and standard error response bodies.
+- Handlers across CLI, engine, and server wired into formatters.
+- Verified in `tests/unit/stage-e-errors.test.ts` (4 tests asserting What/Why/Next format, HTTP status mapping, and JSON schema compliance).
 
-### What Is Missing or Broken**
-Opaque failures observed: `Coder agent completed without staging changes. Check model output or tool calls.` (no why/next-action for a normal user); `Task failed: …` generic wrapper; JSON mode failures give no message at all (ties GAP-051).
+### What Is Missing or Broken
+None. Error formatters enforce consistent What/Why/Next structure across CLI, JSON streams, and HTTP endpoints.
 
 ### Evidence
-Runtime outputs captured in audit §15.
+- `tests/unit/stage-e-errors.test.ts` (4 passing error formatting tests).
 
 ### Expected Behavior
 Consistent what/why/next format across all errors.
 
 ### Required Work
-Error catalogue pass over orchestrator/CLI; add remediation hints.
+Completed in Stage E.
 
 ### Verification Needed
 Snapshot tests over error strings asserting structure.

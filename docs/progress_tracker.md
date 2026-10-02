@@ -1,6 +1,6 @@
 # Phase 1 Gap Implementation — Progress Tracker
 
-## Current Status: Lint ✅ | Tests ✅ (268/268 across 40 files) | Build ✅
+## Current Status: Lint ✅ | Tests ✅ (293/293 across 44 files) | Build ✅
 
 ---
 
@@ -56,15 +56,15 @@
 | GAP-045 | Persisted Undo Engine | ✅ Done | SQLite-backed `undo_batch` and `undo_file` tables via `UndoRepository`; atomic multi-file revert surviving engine and process restarts; interactive hunk review in `DiffReviewScreen`. Verified in `tests/unit/undo-persistence.test.ts`. |
 | GAP-049 | Category-Specific Rules & Override | ✅ Done | 10 repository categories (Frontend, Backend, Mobile, CLI, Library, Infra, Data/ML, Monorepo, Docs, Marketing/SEO) detected via multi-signal heuristics with manual override support in `flappy.config.json` category field; full markdown rules injected into agent prompts without truncation. Verified in `tests/unit/category-rules.test.ts`. |
 
-## Stage E: CLI & Server Correctness — Status: 🔶 Partially Done
+## Stage E: CLI & Server Correctness — Status: ✅ Complete
 
 | GAP | Item | Status | Notes |
 |-----|------|--------|-------|
-| GAP-024 | Headless Exit Code Contract | 🔶 Partial | Codes 0,1,3,4,5 mapped. Missing code 2 (Usage Error) and 130 (Cancelled). |
-| GAP-051 | Structured run.failed in JSON mode | ❌ Missing | No `run.failed` event emission in headless mode. |
-| GAP-052 | Honest Server Command Handling | ❌ Missing | Server needs real command wiring. |
-| GAP-056 | Local Debug Logging | ❌ Missing | No `--debug` flag, no `logger.ts`. |
-| GAP-058 | Consistent Error Formatting | ❌ Missing | No `errors.ts` with what/why/next structure. |
+| GAP-024 | Headless Exit Code Contract | ✅ Done | Full exit code contract: 0 (success), 1 (task/node failure), 2 (usage error via Commander exitOverride), 3 (approval required), 4 (pool exhausted), 5 (no providers), 130 (cancelled via SIGINT/cancelRun). Verified in `tests/integration/stage-e-headless.test.ts`. |
+| GAP-051 | Structured run.failed in JSON mode | ✅ Done | `run.failed` event emitted across orchestrator and CLI failures in JSON/NDJSON and standard modes conforming to `StructuredErrorSchema`. Staging verification and JSON streams verified in `tests/integration/stage-e-headless.test.ts`. |
+| GAP-052 | Honest Server Command Handling | ✅ Done | All 15 commands in `CommandSchema` handled honestly with side effects or standard HTTP error formatting (`formatErrorForHttp`). Added `ExecutePlanCommandSchema`. Verified in `tests/unit/stage-e-server.test.ts`. |
+| GAP-056 | Local Debug Logging | ✅ Done | Structured JSON Logger in `packages/core/src/logging/logger.ts` with `SecretGuard` token redaction, size-based rotation before write, platform log directory resolution, and CLI `--debug` flag. Verified in `tests/unit/stage-e-logger.test.ts`. |
+| GAP-058 | Consistent Error Formatting | ✅ Done | Error taxonomy and formatters in `packages/core/src/errors/flappy-error.ts`: `formatErrorForCli` (what/why/next), `formatErrorForJson` (`StructuredError`), `formatErrorForHttp` (status codes and error bodies). Schema defined in `packages/protocol/src/errors.ts`. Verified in `tests/unit/stage-e-errors.test.ts`. |
 
 ## Stage F: Integrations & Advanced Capabilities — Status: 🔴 Mostly Missing
 
@@ -79,7 +79,7 @@
 
 | GAP | Item | Status | Notes |
 |-----|------|--------|-------|
-| GAP-055 | Fix Typecheck & Coverage | ✅ Fixed | `pnpm lint` passes (0 errors). Tests: 54/54 pass. Coverage threshold not measured yet. |
+| GAP-055 | Fix Typecheck & Coverage | ✅ Fixed | `pnpm lint` passes (0 errors). Tests: 293/293 pass. Coverage threshold not measured yet. |
 | GAP-060 | Connector Contract Tests | ❌ Missing | No `tests/contracts/` directory. |
 | GAP-057 | Package Asset Smoke Test | ❌ Missing | No `files` field in cli package.json. |
 | GAP-030/031/059 | Terminal & Cross-Platform | ❌ Missing | No terminal width wrapping tests. |
@@ -91,4 +91,5 @@
 2. **Stage B**: ✅ Fully completed (`FallbackExecutor`, backoff/eventing, periodic scheduler, fallbackPolicy, pool exhaustion TUI/server, model tag/untag CLI/TUI/server, Ollama Cloud, Anthropic & Google tool-call normalization, User-Agent headers).
 3. **Stage C**: ✅ Fully completed (single-model mode, declarative agents, Reviewer/Tester feedback loop, DAG concurrency without over-admission, run cancellation & exit 130, sessions/compaction/project memory, planner repair & model fallback, search tool security scope, live task graph view P1-G9, approval & question screens P1-G8/G10).
 4. **Stage D**: ✅ Fully completed (Universal RULES bundling in packages/assets, nested directory scoping, structural conflict detection, clarifying question lifecycle & TUI prompt, provider diagnostics & SQLite health metrics, local provider auto-detection for Ollama/LM Studio/llama.cpp, real config loader with precedence & secret masking, Git tool safety with secret scanning & protected branches, SQLite persisted undo engine, 10-category multi-signal rules activation & manual override).
-5. **Stage E**: CLI & Server Correctness (Headless exit codes 2/130, structured run.failed event, server command handling, debug logging, error formatting).
+5. **Stage E**: ✅ Fully completed (Headless exit codes 0/1/2/3/4/5/130, structured run.failed event conforming to StructuredErrorSchema, honest server command handling across all 15 commands, size-rotated and redacted local debug logging, consistent what/why/next error formatting).
+6. **Stage F / Stage G**: Integrations (LSP/MCP/probes/researcher) and packaging/contract gates.

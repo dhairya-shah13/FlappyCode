@@ -83,10 +83,17 @@ FlappyCode is a developer-centric CLI tool, local loopback daemon, and multi-age
 - **Persisted Undo Engine (`GAP-045`)**: SQLite-backed `undo_batch` and `undo_file` tables via `UndoRepository`; atomic multi-file rollback surviving engine and process restarts; interactive hunk review in `DiffReviewScreen`.
 - **Category-Specific Rules & Override (`GAP-049`)**: Multi-signal automatic project classification across 10 categories (Frontend, Backend, Mobile, CLI, Library, Infra, Data/ML, Monorepo, Docs, Marketing/SEO); category markdown rule assets; manual override precedence via `flappy.config.json` category field; full rules injection into PromptComposer without character truncation.
 
+### 6.4 Stage E — CLI & Server Correctness (fully implemented & verified)
+- **Headless Exit Code Contract (`GAP-024`)**: Implemented deterministic exit codes across all execution paths: `0` (successful completion), `1` (task/node failure), `2` (usage error: missing prompt, invalid options, unknown commands), `3` (plan approval required), `4` (free model pool exhausted), `5` (no providers available), and `130` (cancellation via SIGINT / `run.cancelled`). Handled Commander exit overrides and unknown subcommand routing without silently launching the TUI.
+- **Structured `run.failed` in JSON Mode (`GAP-051`)**: Added `error_details` matching `StructuredErrorSchema` (`code`, `category`, `what`, `why`, `next`) to `RunFailedEventSchema` in `@flappycode/protocol`. Guaranteed pure NDJSON output on stdout in `--json` mode with no human error banners.
+- **Honest Server Command Handling (`GAP-052`)**: Complete command dispatch matrix covering all 15 commands in `CommandSchema` (`submitPrompt`, `approvePlan`, `rejectPlan`, `executePlan`, `approveDiff`, `rejectDiff`, `grantPermission`, `answerQuestion`, `cancelRun`, `addProvider`, `refreshProviders`, `pinModel`, `resolvePoolExhausted`, `setModelOverride`, `deleteModelOverride`). Dispatches honestly to the core engine, resolves deferred diff and permission promises, surfaces real failures, and rejects malformed or unsupported payloads with 400.
+- **Local Debug Logging Subsystem (`GAP-056`)**: Implemented `Logger` class in `@flappycode/core` with structured newline-delimited JSON records, platform-aware log directory resolution (`FLAPPYCODE_LOG_DIR`, `%LOCALAPPDATA%`, `XDG_STATE_HOME`, `Library/Logs`), size-based rotation with configurable `maxSizeBytes` and `maxFiles`, and `SecretGuard` final-boundary redaction. Wired `--debug` CLI option to stream engine events into `flappycode.log` without polluting stdout.
+- **Consistent Error Formatting (`GAP-058`)**: Created `FlappyError` and stable `ErrorCodes` catalogue in `@flappycode/core`. Implemented formatters for CLI (`formatErrorForCli` with What/Why/Next structure), JSON (`formatErrorForJson`), and HTTP (`formatErrorForHttp` mapping error categories to status codes 400, 401, 409, 500, 502 with structured payload).
+
 ### 7. Unified CLI Executable (`@flappycode/cli`)
 - Binary command `flappycode`:
   - `flappycode`: Interactive in-box TUI loop using `setRawMode(true)` and `readline.emitKeypressEvents`, rendering live keystrokes directly inside the rounded prompt box with backspace, arrow navigation, home/end, and enter support. Renders first-run OnboardingWizardScreen when 0 providers are connected, supports interactive `/providers add` flow, and strictly enforces interactive PlanGate approval (`Enter` approve, `Esc` reject, `e` edit) before any task DAG execution. Supports slash commands: `/models`, `/models tag`, `/models untag`, `/agents`, `/providers`, `/providers add`, `/sessions`, `/undo`, `/rules`, `/help`, `/exit`.
-  - `flappycode run "<prompt>"`: Headless non-interactive execution with `--model <id>`, `--approve-plan` gating and `--json` event streaming.
+  - `flappycode run "<prompt>"`: Headless non-interactive execution with `--model <id>`, `--approve-plan` gating and `--json` event streaming, `--cwd`, `--debug`, and deterministic exit codes.
   - `flappycode serve`: Local loopback HTTP/SSE server.
   - `flappycode doctor`: Diagnostic check for Node version, SQLite storage, OS keychain, connected providers, reachability, DB PRAGMA integrity, and free models.
   - `flappycode providers`: Add, list, remove, enable, disable, test, and refresh provider connections.
@@ -96,7 +103,7 @@ FlappyCode is a developer-centric CLI tool, local loopback daemon, and multi-age
   - `flappycode config`: Inspect, get, set, locate, and edit configuration (`get`, `set`, `path`, `edit`).
 
 ## Verification & Test Results
-- **Unit & Integration Test Suite**: 40 test suites, 268 passing tests across Stage A, Stage B, Stage C, and Stage D implementations.
+- **Unit & Integration Test Suite**: 44 test suites, 293 passing tests across Stage A, Stage B, Stage C, Stage D, and Stage E implementations.
 - **TypeScript**: Strict typechecking (`tsc --noEmit`) passes with 0 errors across all workspace packages and test suites.
 - **Build**: All packages (`@flappycode/protocol`, `@flappycode/providers`, `@flappycode/storage`, `@flappycode/core`, `@flappycode/server`, `@flappycode/tui`, `@flappycode/cli`) build cleanly to ESM, CJS, and TypeScript declaration files (`.d.ts`).
 

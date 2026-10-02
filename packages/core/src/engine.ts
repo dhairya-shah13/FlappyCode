@@ -28,6 +28,7 @@ import {
 
 import { FlappyEventBus } from './events/event-bus.js';
 import { ModelRegistry } from './registry/model-registry.js';
+import { FlappyError, ErrorCodes } from './errors/flappy-error.js';
 import { DeterministicRouter } from './router/router.js';
 import { RulesLoader } from './rules/rules-loader.js';
 import { PlanGate } from './rules/plan-gate.js';
@@ -103,6 +104,8 @@ export class FlappyEngine {
   public readonly agentLoadErrors: AgentLoadResult['errors'];
 
   private readonly scheduler: IntervalScheduler;
+  private pendingDiffResolvers = new Map<string, (approved: boolean) => void>();
+  private pendingPermissionResolvers = new Map<string, (decision: 'allow' | 'always' | 'deny') => void>();
   private lastExecutionCallbacks?: {
     onDiff?: (proposal: any) => Promise<boolean>;
     onPermission?: (req: {
@@ -389,6 +392,10 @@ export class FlappyEngine {
     this.orchestrator.rejectPlan(runId, reason);
   }
 
+  public failRun(runId: string, error: string, reason: string, errorDetails?: any): void {
+    this.orchestrator.failRun(runId, error, reason, errorDetails);
+  }
+
   public async executePlan(
     runId: string,
     onDiffApprovalRequired?: (proposal: any) => Promise<boolean>,
@@ -400,17 +407,108 @@ export class FlappyEngine {
     }) => Promise<'allow' | 'always' | 'deny'>,
     execOpts: { approvalProvenance?: 'headless_flag' } = {}
   ): Promise<void> {
-    this.lastExecutionCallbacks = { onDiff: onDiffApprovalRequired, onPermission: onPermissionApprovalRequired };
-    await this.orchestrator.executeApprovedPlan(
-      runId,
-      onDiffApprovalRequired,
-      onPermissionApprovalRequired,
-      execOpts
-    );
+    const diffHandler = onDiffApprovalRequired ?? (async (_proposal: any) => {
+      return new Promise<boolean>((resolve) => {
+        this.pendingDiffResolvers.set(runId, resolve);
+      });
+    });
+
+    const permHandler = onPermissionApprovalRequired ?? (async (req: {
+      agent: string;
+      command: string;
+      reason?: string;
+      isDestructive?: boolean;
+    }) => {
+      const permId = `perm_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      this.eventBus.emit({
+        type: 'approval.requested',
+        approval_id: permId,
+        run_id: runId,
+        kind: 'permission',
+        title: 'Tool Permission Required',
+        description: req.reason || `Agent '${req.agent}' requests permission to run '${req.command}'`,
+        details: { agent: req.agent, command: req.command, is_destructive: req.isDestructive },
+        timestamp: Date.now(),
+      });
+      return new Promise<'allow' | 'always' | 'deny'>((resolve) => {
+        this.pendingPermissionResolvers.set(permId, resolve);
+      });
+    });
+
+    this.lastExecutionCallbacks = { onDiff: diffHandler, onPermission: permHandler };
+    try {
+      await this.orchestrator.executeApprovedPlan(
+        runId,
+        diffHandler,
+        permHandler,
+        execOpts
+      );
+    } finally {
+      this.pendingDiffResolvers.delete(runId);
+    }
+  }
+
+  public approveDiff(runId: string): void {
+    const resolver = this.pendingDiffResolvers.get(runId);
+    if (!resolver) {
+      throw new FlappyError({
+        code: ErrorCodes.INVALID_STATE,
+        category: 'command',
+        what: `No pending diff approval for run '${runId}'.`,
+        next: 'Ensure a run is executing and currently waiting for diff approval.',
+      });
+    }
+    this.pendingDiffResolvers.delete(runId);
+    resolver(true);
+  }
+
+  public rejectDiff(runId: string, _reason?: string): void {
+    const resolver = this.pendingDiffResolvers.get(runId);
+    if (!resolver) {
+      throw new FlappyError({
+        code: ErrorCodes.INVALID_STATE,
+        category: 'command',
+        what: `No pending diff approval for run '${runId}'.`,
+        next: 'Ensure a run is executing and currently waiting for diff approval.',
+      });
+    }
+    this.pendingDiffResolvers.delete(runId);
+    resolver(false);
+  }
+
+  public grantPermission(permissionId: string, decision: 'allow' | 'always' | 'deny'): void {
+    const resolver = this.pendingPermissionResolvers.get(permissionId);
+    if (!resolver) {
+      throw new FlappyError({
+        code: ErrorCodes.INVALID_STATE,
+        category: 'command',
+        what: `No pending permission request '${permissionId}'.`,
+        next: 'Verify the permission_id matches an active approval request.',
+      });
+    }
+    this.pendingPermissionResolvers.delete(permissionId);
+    resolver(decision);
   }
 
   /** Cancel an active run (FR-ORC-010); in-flight calls abort, nodes become cancelled. */
   public cancelRun(runId?: string): void {
+    if (runId) {
+      const diffRes = this.pendingDiffResolvers.get(runId);
+      if (diffRes) {
+        this.pendingDiffResolvers.delete(runId);
+        diffRes(false);
+      }
+    } else {
+      for (const res of this.pendingDiffResolvers.values()) {
+        res(false);
+      }
+      this.pendingDiffResolvers.clear();
+    }
+    for (const res of this.pendingPermissionResolvers.values()) {
+      res('deny');
+    }
+    this.pendingPermissionResolvers.clear();
+
     this.orchestrator.cancel(runId);
     if (runId) {
       try {

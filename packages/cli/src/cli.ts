@@ -9,6 +9,7 @@ process.emitWarning = (warning: any, ...args: any[]) => {
 };
 
 import fs from 'node:fs';
+import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { Command } from 'commander';
 import readline from 'node:readline';
@@ -20,6 +21,11 @@ import {
   setConfigValue,
   writeConfigFile,
   maskSecrets,
+  FlappyError,
+  ErrorCodes,
+  formatErrorForCli,
+  formatErrorForJson,
+  Logger,
 } from '@flappycode/core';
 import { FlappyServer } from '@flappycode/server';
 import {
@@ -35,13 +41,39 @@ import {
   QuestionPromptScreen,
 } from '@flappycode/tui';
 
+export const ExitCodes = {
+  SUCCESS: 0,
+  TASK_FAILED: 1,
+  USAGE_ERROR: 2,
+  APPROVAL_REQUIRED: 3,
+  POOL_EXHAUSTED: 4,
+  NO_PROVIDERS: 5,
+  CANCELLED: 130,
+} as const;
 
 const program = new Command();
 
 program
   .name('flappycode')
   .description('Multi-provider, multi-agent free model aggregator and coding assistant')
-  .version('0.1.0');
+  .version('0.1.0')
+  .option('--debug', 'Enable verbose local debug logging to flappycode.log');
+
+program.exitOverride((err) => {
+  if (
+    err.code === 'commander.unknownOption' ||
+    err.code === 'commander.unknownCommand' ||
+    err.code === 'commander.missingArgument' ||
+    err.code === 'commander.missingMandatoryOptionValue' ||
+    err.code === 'commander.optionMissingArgument'
+  ) {
+    process.exit(ExitCodes.USAGE_ERROR);
+  }
+  if (err.code === 'commander.helpDisplayed' || err.code === 'commander.version') {
+    process.exit(0);
+  }
+  throw err;
+});
 
 // Default action: Launch interactive TUI
 program.action(async () => {
@@ -982,14 +1014,63 @@ program.action(async () => {
 
 // Headless run command
 program
-  .command('run <prompt>')
+  .command('run [prompt]')
   .description('Run a single task non-interactively (headless mode)')
   .option('--model <id>', 'Specific model ID or flappyauto', 'flappyauto')
   .option('--approve-plan', 'Explicitly approve the implementation plan (mandatory for writes)')
   .option('--json', 'Output newline-delimited protocol events')
   .option('--cwd <path>', 'Working directory', process.cwd())
+  .option('--debug', 'Enable verbose local debug logging to flappycode.log')
   .action(async (prompt, options) => {
-    const engine = new FlappyEngine({ projectRoot: options.cwd });
+    const isDebug = options?.debug || program.opts().debug || process.env.FLAPPYCODE_DEBUG === '1' || process.argv.includes('--debug');
+    const projectRoot = options?.cwd ? path.resolve(options.cwd) : process.cwd();
+
+    let logger: Logger | undefined;
+    if (isDebug) {
+      logger = new Logger({ level: 'debug' });
+      logger.debug('Starting headless run', { prompt, model: options?.model, approvePlan: options?.approvePlan, projectRoot });
+    }
+
+    // Missing required argument -> exit code 2 (GAP-024)
+    if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
+      if (logger) {
+        logger.warn('Usage error: missing required prompt argument');
+      }
+      const err = new FlappyError({
+        code: ErrorCodes.USAGE_MISSING_PROMPT,
+        category: 'usage',
+        what: "Missing required argument 'prompt'.",
+        next: 'Provide a task prompt, e.g. flappycode run "add logging"',
+      });
+      if (!options?.json) {
+        console.error(formatErrorForCli(err));
+      } else {
+        console.error(JSON.stringify(formatErrorForJson(err)));
+      }
+      process.exit(ExitCodes.USAGE_ERROR);
+    }
+
+    let engine: FlappyEngine;
+    try {
+      engine = new FlappyEngine({ projectRoot, disableScheduler: true });
+    } catch (err: any) {
+      if (options.json) {
+        console.error(JSON.stringify(formatErrorForJson(err)));
+      } else {
+        console.error(formatErrorForCli(err));
+      }
+      process.exit(ExitCodes.TASK_FAILED);
+    }
+
+    if (logger && engine.secretGuard) {
+      (logger as any).secretGuard = engine.secretGuard;
+    }
+
+    if (logger) {
+      engine.eventBus.onAny((ev) => {
+        logger!.debug(`Event: ${ev.type}`, { event: ev });
+      });
+    }
 
     if (options.json) {
       engine.eventBus.onAny((ev) => {
@@ -997,56 +1078,113 @@ program
       });
     }
 
+    // Cancellation wiring (GAP-024 B: SIGINT results in run.cancelled and exit code 130)
+    let isCancelled = false;
+    let activeRunId: string | undefined;
+    const sigintHandler = () => {
+      if (isCancelled) return;
+      isCancelled = true;
+      if (!options.json) {
+        console.error(Palette.yellow('\n✖ Cancellation requested. Aborting in-flight operations...'));
+      }
+      engine.cancelRun(activeRunId);
+      setTimeout(() => {
+        process.exit(ExitCodes.CANCELLED);
+      }, 500);
+    };
+    process.once('SIGINT', sigintHandler);
+
+    engine.eventBus.on('run.cancelled', () => {
+      process.removeListener('SIGINT', sigintHandler);
+      process.exit(ExitCodes.CANCELLED);
+    });
+
     try {
       const providers = engine.providerRepo.listEnabled();
       if (providers.length === 0) {
-        if (!options.json) console.error(Palette.error('✖ Error: No providers connected.'));
-        process.exit(5);
+        const err = new FlappyError({
+          code: ErrorCodes.NO_PROVIDERS,
+          category: 'provider',
+          what: 'No enabled providers configured.',
+          next: 'Run "flappycode providers add" to connect a provider.',
+        });
+        if (options.json) {
+          console.log(JSON.stringify({
+            type: 'run.failed',
+            run_id: 'run_init',
+            error: err.what,
+            reason: 'no_providers',
+            error_details: err.toStructured(),
+            timestamp: Date.now(),
+          }));
+        } else {
+          console.error(formatErrorForCli(err));
+        }
+        process.removeListener('SIGINT', sigintHandler);
+        process.exit(ExitCodes.NO_PROVIDERS);
       }
 
       const plan = await engine.submitPrompt(prompt, { model: options.model });
+      activeRunId = plan.run_id;
 
       // Without --approve-plan, exit code 3 is mandatory per SRS FR-RUL-009 & CLIDesign.md §5.1
       if (!options.approvePlan) {
+        process.removeListener('SIGINT', sigintHandler);
+        const err = new FlappyError({
+          code: ErrorCodes.APPROVAL_REQUIRED,
+          category: 'approval_required',
+          what: 'Approval required: Headless execution requires explicit --approve-plan flag.',
+          why: 'A human approval is required before modifying any project files.',
+          next: 'Re-run with --approve-plan to execute the generated plan.',
+        });
+        engine.failRun(plan.run_id, err.what, 'approval_required', err.toStructured());
         if (!options.json) {
-          console.error(
-            Palette.yellow(
-              '✖ Approval required: Headless execution requires explicit --approve-plan flag.'
-            )
-          );
+          console.error(formatErrorForCli(err));
         }
-        process.exit(3);
+        process.exit(ExitCodes.APPROVAL_REQUIRED);
       }
 
       engine.approvePlan(plan.run_id);
-      await engine.executePlan(plan.run_id);
+      await engine.executePlan(
+        plan.run_id,
+        async () => true, // Headless with --approve-plan approves diff review
+        async (req) => req.isDestructive ? 'deny' : 'allow',
+        { approvalProvenance: 'headless_flag' }
+      );
 
+      process.removeListener('SIGINT', sigintHandler);
       if (!options.json) {
         console.log(Palette.ok(`✔ Done: Completed task "${plan.goal}"`));
       }
-      process.exit(0);
+      process.exit(ExitCodes.SUCCESS);
     } catch (err: any) {
+      process.removeListener('SIGINT', sigintHandler);
+      if (err?.name === 'RunCancelledError' || isCancelled) {
+        process.exit(ExitCodes.CANCELLED);
+      }
       const isPoolExhausted =
         err?.name === 'PoolExhaustedError' ||
         err?.code === 'POOL_EXHAUSTED' ||
         err?.message?.includes('pool is exhausted') ||
         err?.message?.includes('pool exhausted');
       if (isPoolExhausted) {
-        // Headless: no screen. The NDJSON stream already carries
-        // approval.requested{kind:'pool_exhausted'} with exactly two actions,
-        // pool.exhausted, and run.failed{reason:'pool_exhausted'}.
         if (!options.json) {
-          console.error(Palette.error('✖ Free model pool exhausted.'));
-          console.error('  Two actions are available:');
-          console.error('  1. Add credit / recharge a paid-capable provider');
-          console.error('  2. Connect another free-tier provider');
-          console.error('  Resolve with: POST /v1/commands {"type":"resolvePoolExhausted",...} (flappycode serve)');
+          const poolErr = new FlappyError({
+            code: ErrorCodes.POOL_EXHAUSTED,
+            category: 'pool_exhausted',
+            what: 'Free model pool exhausted.',
+            why: 'All free-tier providers are exhausted or rate-limited.',
+            next: 'Connect an additional free provider or authorize paid models.',
+          });
+          console.error(formatErrorForCli(poolErr));
         }
-        process.exit(4);
+        process.exit(ExitCodes.POOL_EXHAUSTED);
       }
       // In --json mode the engine already emitted run.failed; keep stdout NDJSON-only.
-      if (!options.json) console.error(Palette.error(`✖ Task failed: ${err.message}`));
-      process.exit(1);
+      if (!options.json) {
+        console.error(formatErrorForCli(err));
+      }
+      process.exit(ExitCodes.TASK_FAILED);
     }
   });
 
@@ -1495,11 +1633,11 @@ agentsCmd
   });
 
 // Guard against unknown subcommands silently launching the TUI
-const knownCommands = ['providers', 'models', 'doctor', 'sessions', 'agents', 'config', 'serve'];
+const knownCommands = ['run', 'serve', 'providers', 'models', 'doctor', 'sessions', 'agents', 'config'];
 const firstArg = process.argv[2];
 if (firstArg && !firstArg.startsWith('-') && !knownCommands.includes(firstArg)) {
   console.error(Palette.error(`✖ Unknown command: '${firstArg}'. Run 'flappycode --help' for usage.`));
-  process.exit(1);
+  process.exit(ExitCodes.USAGE_ERROR);
 }
 
 program.parse(process.argv);
