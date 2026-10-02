@@ -15,6 +15,10 @@ export class FsJail {
     this.canonicalRoot = path.resolve(fs.realpathSync.native ? fs.realpathSync.native(projectRoot) : fs.realpathSync(projectRoot));
   }
 
+  public get root(): string {
+    return this.canonicalRoot;
+  }
+
   private isInsideRoot(candidate: string): boolean {
     const canonical = this.canonicalRoot;
     if (process.platform === 'win32') {

@@ -45,7 +45,7 @@ export const BUILTIN_AGENTS: Record<string, AgentDefinition> = {
     name: 'Codebase-Analyst',
     system_prompt:
       'You are the codebase architecture and structural analysis agent. You trace call hierarchies, inspect type contracts, and explain data flows.',
-    allowed_tools: ['search', 'fs_read', 'fs_list', 'ask'],
+    allowed_tools: ['search', 'semantic_search', 'fs_read', 'fs_list', 'ask'],
     preferred_model_ref: 'flappyauto',
     fallback_policy: 'next_best_fit',
   },

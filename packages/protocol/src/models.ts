@@ -83,3 +83,21 @@ export const TaskRequirementsSchema = z.object({
   excludeModelIds: z.array(z.string()).optional(),
 });
 export type TaskRequirements = z.infer<typeof TaskRequirementsSchema>;
+
+export const CommunityModelEntrySchema = z.object({
+  tier: ModelTierSchema,
+  context_length: z.number().int().nonnegative().optional(),
+  supports_tools: z.boolean().default(false),
+  supports_vision: z.boolean().default(false),
+  data_use_policy: DataUsePolicySchema.optional(),
+  note: z.string().optional(),
+});
+export type CommunityModelEntry = z.infer<typeof CommunityModelEntrySchema>;
+
+export const CommunityCatalogSchema = z.object({
+  version: z.string(),
+  updated_at: z.string().optional(),
+  models: z.record(CommunityModelEntrySchema),
+});
+export type CommunityCatalog = z.infer<typeof CommunityCatalogSchema>;
+

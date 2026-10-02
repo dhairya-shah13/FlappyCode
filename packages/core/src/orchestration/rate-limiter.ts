@@ -90,10 +90,50 @@ export class ProviderRateLimiter {
     b.blockedUntil = Math.max(b.blockedUntil, Date.now() + ms);
   }
 
+  private inFlight = new Map<string, number>();
+
+  /**
+   * Acquire a concurrency semaphore slot for this provider.
+   * Returns a release callback function that MUST be called upon request completion.
+   */
+  public async acquireConcurrency(cfg: ProviderConfig, signal?: AbortSignal): Promise<() => void> {
+    if (this.isUnthrottled(cfg)) return () => {};
+    const max = cfg.max_concurrency;
+    if (!max || max <= 0) return () => {};
+
+    while ((this.inFlight.get(cfg.id) ?? 0) >= max) {
+      if (signal?.aborted) {
+        throw new Error('Concurrency wait aborted by cancellation');
+      }
+      await this.sleep(20);
+    }
+
+    this.inFlight.set(cfg.id, (this.inFlight.get(cfg.id) ?? 0) + 1);
+
+    let released = false;
+    return () => {
+      if (!released) {
+        released = true;
+        const current = this.inFlight.get(cfg.id) ?? 1;
+        this.inFlight.set(cfg.id, Math.max(0, current - 1));
+      }
+    };
+  }
+
+  public getInFlight(cfg: ProviderConfig): number {
+    return this.inFlight.get(cfg.id) ?? 0;
+  }
+
   /** Test/inspection helper. */
-  public snapshot(cfg: ProviderConfig): { tokens: number; blockedUntil: number; rpm: number } {
+  public snapshot(cfg: ProviderConfig): { tokens: number; blockedUntil: number; rpm: number; inFlight: number } {
     const b = this.bucketFor(cfg);
     this.refill(b);
-    return { tokens: b.tokens, blockedUntil: b.blockedUntil, rpm: b.rpm };
+    return {
+      tokens: b.tokens,
+      blockedUntil: b.blockedUntil,
+      rpm: b.rpm,
+      inFlight: this.getInFlight(cfg),
+    };
   }
 }
+

@@ -18,6 +18,7 @@ import { DiffEngine } from '../tools/diff-engine.js';
 import { UndoEngine } from '../tools/undo-engine.js';
 import { ShellTool } from '../tools/shell-tool.js';
 import { SearchTool } from '../tools/search-tool.js';
+import { SemanticIndex } from '../tools/semantic-index.js';
 import { LspClient } from '../tools/lsp-client.js';
 import { BUILTIN_AGENTS } from '../agents/agent-definitions.js';
 import { FlappyEventBus } from '../events/event-bus.js';
@@ -97,6 +98,7 @@ export interface FlappyAutoOptions {
   rateLimiter?: ProviderRateLimiter;
   retryPolicy?: Partial<RetryPolicy>;
   lspClient?: LspClient;
+  semanticIndex?: SemanticIndex;
 }
 
 interface ToolCallAssembled {
@@ -1200,6 +1202,23 @@ export class FlappyAutoOrchestrator {
         },
       });
     }
+    if (has('semantic_search')) {
+      defs.push({
+        type: 'function',
+        function: {
+          name: 'semantic_search',
+          description: 'Search project files semantically/offline using BM25 indexing across code chunks',
+          parameters: {
+            type: 'object',
+            properties: {
+              query: { type: 'string', description: 'Search query describing code or feature' },
+              limit: { type: 'number', description: 'Maximum matches to return (default 10)' },
+            },
+            required: ['query'],
+          },
+        },
+      });
+    }
     if (has('ask')) {
       defs.push({
         type: 'function',
@@ -1383,6 +1402,26 @@ export class FlappyAutoOrchestrator {
       });
       if (matches.length === 0) {
         return `No matches for '${args.query}'.`;
+      }
+      return JSON.stringify(matches, null, 2);
+    }
+
+    if (tc.name === 'semantic_search' && args.query) {
+      // P1-D8: Codebase-Analyst semantic search via BM25 chunk index
+      const limit = typeof args.limit === 'number' ? Math.min(50, args.limit) : 10;
+      let matches: any[] = [];
+      if (this.opts.semanticIndex) {
+        matches = this.opts.semanticIndex.search(String(args.query), limit);
+      }
+      this.recordToolCall(node, {
+        id: tc.id,
+        tool: 'semantic_search',
+        args: { query: args.query, limit },
+        result_summary: `${matches.length} semantic match(es) for '${args.query}'`,
+        approved_by_user: true,
+      });
+      if (matches.length === 0) {
+        return `No semantic matches for '${args.query}'.`;
       }
       return JSON.stringify(matches, null, 2);
     }

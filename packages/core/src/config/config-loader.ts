@@ -172,7 +172,7 @@ export function setConfigValue(config: FlappyConfig, dottedKey: string, value: a
 }
 
 /** Persist config JSON to disk (creating directories as needed). */
-export function writeConfigFile(filePath: string, config: FlappyConfig): void {
+export function writeConfigFile(filePath: string, config: FlappyConfig | Record<string, any>): void {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, JSON.stringify(config, null, 2) + '\n', 'utf8');
 }

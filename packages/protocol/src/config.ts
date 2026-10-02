@@ -111,6 +111,7 @@ export const FlappyConfigSchema = z.object({
     .default({
       protected_branches: ['main', 'master'],
     }),
+  update_check: z.boolean().optional().default(true),
 });
 export type FlappyConfig = z.infer<typeof FlappyConfigSchema>;
 

@@ -39,6 +39,7 @@ import { UndoEngine } from './tools/undo-engine.js';
 import { ShellTool } from './tools/shell-tool.js';
 import { GitTool } from './tools/git-tool.js';
 import { SearchTool } from './tools/search-tool.js';
+import { SemanticIndex } from './tools/semantic-index.js';
 import { SecretGuard } from './tools/secret-guard.js';
 import { PermissionEngine } from './tools/permission-engine.js';
 import { FlappyAutoOrchestrator, AskQuestionRequest } from './orchestration/flappyauto.js';
@@ -93,6 +94,7 @@ export class FlappyEngine {
   public readonly shell: ShellTool;
   public readonly git: GitTool;
   public readonly search: SearchTool;
+  public readonly semanticIndex: SemanticIndex;
   public readonly orchestrator: FlappyAutoOrchestrator;
   public readonly rateLimiter: ProviderRateLimiter;
   public readonly projectMemoryRepo: ProjectMemoryRepository;
@@ -162,6 +164,7 @@ export class FlappyEngine {
     this.git = new GitTool(this.shell, this.secretGuard, this.config.git?.protected_branches);
 
     this.search = new SearchTool(this.fsJail);
+    this.semanticIndex = new SemanticIndex(this.fsJail, this.db.db);
     this.rateLimiter = new ProviderRateLimiter();
     this.projectMemoryRepo = new ProjectMemoryRepository(this.db.db);
 
@@ -196,6 +199,7 @@ export class FlappyEngine {
       fsJail: this.fsJail,
       shell: this.shell,
       search: this.search,
+      semanticIndex: this.semanticIndex,
       undoEngine: this.undoEngine,
       eventBus: this.eventBus,
       providerRepo: this.providerRepo,
@@ -585,11 +589,24 @@ export class FlappyEngine {
   // ---------------------------------------------------------------------------
 
   public listAgents(): Record<string, AgentDefinition> {
-    return this.orchestrator.listAgents();
+    const list = this.orchestrator.listAgents();
+    for (const [name, def] of Object.entries(list)) {
+      const persisted = this.agentRepo.get(name);
+      if (persisted?.preferred_model_ref) {
+        list[name] = { ...def, preferred_model_ref: persisted.preferred_model_ref };
+      }
+    }
+    return list;
   }
 
   public getAgent(name: string): AgentDefinition | null {
-    return this.orchestrator.listAgents()[name] ?? null;
+    const def = this.orchestrator.listAgents()[name] ?? null;
+    if (!def) return null;
+    const persisted = this.agentRepo.get(name);
+    if (persisted?.preferred_model_ref) {
+      return { ...def, preferred_model_ref: persisted.preferred_model_ref };
+    }
+    return def;
   }
 
   /** `flappycode agents bind <agent> <model-id>` — persists the binding (GAP-007). */
