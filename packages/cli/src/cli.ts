@@ -8,6 +8,9 @@ process.emitWarning = (warning: any, ...args: any[]) => {
   return (originalEmitWarning as any).call(process, warning, ...args);
 };
 
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -26,6 +29,7 @@ import {
   formatErrorForCli,
   formatErrorForJson,
   Logger,
+  checkUpgrade,
 } from '@flappycode/core';
 import { FlappyServer } from '@flappycode/server';
 import {
@@ -621,13 +625,37 @@ program.action(async () => {
         return;
       }
 
-      if (line === '/agents') {
+      if (line === '/agents' || line.startsWith('/agents ')) {
         process.stdout.write('\x1b[2J\x1b[H');
-        const agents = engine.listAgents();
-        console.log(Palette.bold(`Available Agents (${Object.keys(agents).length}):\n`));
-        for (const [name, def] of Object.entries(agents)) {
-          console.log(`  ${Palette.cyan(name)}: ${def.system_prompt.slice(0, 80)}...`);
-          console.log(`    Default model: ${Palette.dim(def.preferred_model_ref || 'flappyauto')} | Tools: ${Palette.dim(def.allowed_tools.join(', ') || 'none')}\n`);
+        const parts = line.trim().split(/\s+/);
+        if (parts[1] === 'bind' && parts[2]) {
+          const agentName = parts[2];
+          const modelId = parts[3] || 'flappyauto';
+          try {
+            engine.bindAgent(agentName, modelId);
+            console.log(Palette.ok(`✔ Agent '${agentName}' bound to model '${modelId}'.`));
+          } catch (e: any) {
+            console.log(Palette.error(`✖ ${e.message}`));
+          }
+        } else if (parts[1] === 'show' && parts[2]) {
+          const def = engine.getAgent(parts[2]);
+          if (!def) {
+            console.log(Palette.error(`✖ Agent '${parts[2]}' not found.`));
+          } else {
+            console.log(Palette.bold(`Agent: ${Palette.cyan(def.name)}`));
+            console.log(`  Model Binding:    ${Palette.dim(def.preferred_model_ref || 'flappyauto')}`);
+            console.log(`  Fallback Policy:  ${Palette.dim(def.fallback_policy || 'ask_user')}`);
+            console.log(`  Allowed Tools:    ${Palette.dim(def.allowed_tools.join(', ') || 'none')}`);
+            console.log(`  System Prompt:    ${def.system_prompt.slice(0, 120)}...\n`);
+          }
+        } else {
+          const agents = engine.listAgents();
+          console.log(Palette.bold(`Available Agents (${Object.keys(agents).length}):\n`));
+          for (const [name, def] of Object.entries(agents)) {
+            console.log(`  ${Palette.cyan(name)}: ${def.system_prompt.slice(0, 80)}...`);
+            console.log(`    Default model: ${Palette.dim(def.preferred_model_ref || 'flappyauto')} | Tools: ${Palette.dim(def.allowed_tools.join(', ') || 'none')}\n`);
+          }
+          console.log(Palette.dim(`Usage: /agents bind <agent> <model>, /agents show <agent>`));
         }
         await waitForAnyKey();
         process.stdin.setRawMode(true);
@@ -1618,13 +1646,18 @@ sessionsCmd
   });
 
 // Agents command
-const agentsCmd = program.command('agents').description('Manage agent definitions');
+const agentsCmd = program.command('agents').description('Manage agent definitions and model bindings');
 agentsCmd
   .command('list')
   .description('List available agents (built-in and custom)')
-  .action(() => {
+  .option('--json', 'Output in JSON format')
+  .action((options) => {
     const engine = new FlappyEngine();
     const agents = engine.listAgents();
+    if (options.json) {
+      console.log(JSON.stringify(agents, null, 2));
+      return;
+    }
     console.log(Palette.bold(`Available Agents (${Object.keys(agents).length}):\n`));
     for (const [name, def] of Object.entries(agents)) {
       console.log(`  ${Palette.cyan(name)}: ${def.system_prompt.slice(0, 80)}...`);
@@ -1632,8 +1665,99 @@ agentsCmd
     }
   });
 
+agentsCmd
+  .command('show <name>')
+  .description('Show full definition, tool scope, and model binding for an agent')
+  .option('--json', 'Output in JSON format')
+  .action((name, options) => {
+    const engine = new FlappyEngine();
+    const def = engine.getAgent(name);
+    if (!def) {
+      const known = Object.keys(engine.listAgents()).join(', ');
+      console.error(
+        Palette.error(`✖ Agent '${name}' does not exist.\n  Why: Specified agent name was not found.\n  Next: Run 'flappycode agents list' to view available agents (${known}).`)
+      );
+      process.exit(1);
+    }
+    if (options.json) {
+      console.log(JSON.stringify(def, null, 2));
+      return;
+    }
+    console.log(Palette.bold(`\nAgent: ${Palette.cyan(def.name)}`));
+    console.log(`  Model Binding:    ${def.preferred_model_ref === 'flappyauto' ? Palette.dim('flappyauto (automatic best-fit)') : Palette.ok(def.preferred_model_ref)}`);
+    console.log(`  Fallback Policy:  ${Palette.dim(def.fallback_policy || 'ask_user')}`);
+    console.log(`  Allowed Tools:    ${Palette.dim(def.allowed_tools.join(', ') || 'none')}`);
+    console.log(`  System Prompt:`);
+    console.log(Palette.dim(def.system_prompt.split('\n').map((l: string) => `    ${l}`).join('\n')));
+    console.log('');
+  });
+
+agentsCmd
+  .command('bind <agent> [model]')
+  .description('Bind an agent to a specific model (or restore flappyauto with --unbind)')
+  .option('--unbind', 'Unbind agent and restore automatic model selection')
+  .action((agent, model, options) => {
+    const engine = new FlappyEngine();
+    const targetModel = options.unbind ? 'flappyauto' : (model || 'flappyauto');
+    try {
+      engine.bindAgent(agent, targetModel);
+      if (targetModel === 'flappyauto') {
+        console.log(Palette.ok(`✔ Restored agent '${agent}' to automatic model selection ('flappyauto').`));
+      } else {
+        console.log(Palette.ok(`✔ Bound agent '${agent}' to model '${targetModel}'.`));
+      }
+    } catch (err: any) {
+      console.error(Palette.error(`✖ Could not bind agent '${agent}': ${err.message}`));
+      process.exit(1);
+    }
+  });
+
+// Upgrade command (NEW-003, CLIDesign §5.1, NFR-PRV-001)
+program
+  .command('upgrade')
+  .description('Check for or upgrade flappycode to latest version')
+  .option('--check', 'Only check for updates without upgrading')
+  .option('--registry <url>', 'Override registry URL for update check')
+  .action(async (options) => {
+    const engine = new FlappyEngine();
+    const config = engine.config;
+    const updateCheckEnabled = (config as any)?.update_check !== false;
+
+    console.log(Palette.dim('Checking for updates...'));
+    const result = await checkUpgrade({
+      currentVersion: '0.1.0',
+      registryUrl: options.registry,
+      enabled: updateCheckEnabled,
+    });
+
+    if (result.status === 'disabled') {
+      console.log(Palette.dim(`ℹ ${result.message}`));
+      return;
+    }
+
+    if (result.status === 'error') {
+      console.error(
+        Palette.error(
+          `✖ Could not check for updates.\n  Why: ${result.message}\n  Next: If running from source, update via 'git pull && pnpm build'. (Note: npm package publication is pending initial team testing).`
+        )
+      );
+      process.exit(1);
+    }
+
+    if (result.status === 'update_available') {
+      console.log(Palette.ok(`★ ${result.message}`));
+      if (options.check) {
+        return;
+      }
+      console.log(`To upgrade, run: ${Palette.bold('npm install -g flappycode@latest')}`);
+      return;
+    }
+
+    console.log(Palette.ok(`✔ ${result.message}`));
+  });
+
 // Guard against unknown subcommands silently launching the TUI
-const knownCommands = ['run', 'serve', 'providers', 'models', 'doctor', 'sessions', 'agents', 'config'];
+const knownCommands = ['run', 'serve', 'providers', 'models', 'doctor', 'sessions', 'agents', 'config', 'upgrade'];
 const firstArg = process.argv[2];
 if (firstArg && !firstArg.startsWith('-') && !knownCommands.includes(firstArg)) {
   console.error(Palette.error(`✖ Unknown command: '${firstArg}'. Run 'flappycode --help' for usage.`));
