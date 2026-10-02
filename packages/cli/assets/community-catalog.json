@@ -1,0 +1,26 @@
+{
+  "version": "1.0.0",
+  "updated_at": "2026-10-02T00:00:00Z",
+  "models": {
+    "claude-3-5-sonnet-20241022": {
+      "tier": "flagship",
+      "supports_tools": true,
+      "supports_vision": true
+    },
+    "gpt-4o": {
+      "tier": "flagship",
+      "supports_tools": true,
+      "supports_vision": true
+    },
+    "gemini-2.0-flash": {
+      "tier": "strong",
+      "supports_tools": true,
+      "supports_vision": true
+    },
+    "llama3:8b": {
+      "tier": "balanced",
+      "supports_tools": true,
+      "supports_vision": false
+    }
+  }
+}

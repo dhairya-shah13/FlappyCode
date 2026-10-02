@@ -20,6 +20,9 @@ export function getUserConfigPath(): string {
     const base = process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming');
     return path.join(base, 'flappycode', 'config.json');
   }
+  if (process.platform === 'darwin') {
+    return path.join(os.homedir(), 'Library', 'Application Support', 'flappycode', 'config.json');
+  }
   const base = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config');
   return path.join(base, 'flappycode', 'config.json');
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ModelClassifier } from '@flappycode/core';
 import { RawModel } from '@flappycode/protocol';
+import { PROVIDER_PROFILES } from '@flappycode/providers';
 
 describe('ModelClassifier Precedence Tests (FR-MOD-002)', () => {
   const communityCatalog = {
@@ -117,5 +118,76 @@ describe('ModelClassifier Precedence Tests (FR-MOD-002)', () => {
     const res = classifier.classify('custom-prov', raw, null, 'openai-compatible');
     expect(res.tier).toBe('paid');
     expect(res.source).toBe('metadata');
+  });
+
+  it('Tier Precedence 2b: Matches unqualified model ID in community catalog', () => {
+    const classifier = new ModelClassifier(communityCatalog);
+    const raw: RawModel = {
+      id: 'community-unqualified-free',
+      name: 'Unqualified Community Model',
+      context_length: 8192,
+      supports_tools: false,
+      supports_vision: false,
+      price_in: 1.0,
+      price_out: 2.0,
+    };
+
+    const res = classifier.classify('other-prov', raw, null, 'openai-compatible');
+    expect(res.tier).toBe('free');
+    expect(res.source).toBe('community');
+  });
+
+  it('updates catalog dynamically using setCommunityCatalog', () => {
+    const classifier = new ModelClassifier({});
+    classifier.setCommunityCatalog({
+      models: {
+        'dyn-prov/dyn-model': { tier: 'free' },
+      },
+    });
+
+    const raw: RawModel = {
+      id: 'dyn-model',
+      name: 'Dynamic Model',
+      context_length: 8192,
+      supports_tools: false,
+      supports_vision: false,
+      price_in: 0,
+      price_out: 0,
+    };
+
+    const res = classifier.classify('dyn-prov', raw, null, 'openai-compatible');
+    expect(res.tier).toBe('free');
+    expect(res.source).toBe('community');
+  });
+
+  it('classifies local provider model without custom rule as free', () => {
+    // Add a temporary local profile without freeClassifierRule to verify fallback
+    (PROVIDER_PROFILES as any)['test-local'] = {
+      id: 'test-local',
+      type: 'openai-compatible',
+      displayName: 'Test Local',
+      defaultBaseUrl: 'http://localhost:5000',
+      discoveryPath: '/models',
+      authHeaderPrefix: 'Bearer',
+      defaultDataUsePolicy: 'no_training',
+      isLocal: true,
+    };
+
+    const classifier = new ModelClassifier({});
+    const raw: RawModel = {
+      id: 'custom-local-model',
+      name: 'Local Model',
+      context_length: 4096,
+      supports_tools: false,
+      supports_vision: false,
+      price_in: 0,
+      price_out: 0,
+    };
+
+    const res = classifier.classify('test-local', raw, null);
+    expect(res.tier).toBe('free');
+    expect(res.source).toBe('rule');
+
+    delete (PROVIDER_PROFILES as any)['test-local'];
   });
 });

@@ -210,6 +210,14 @@ export class GoogleConnector implements ProviderConnector {
             if (candidate.finishReason) {
               yield { finish_reason: candidate.finishReason };
             }
+            if (data.usageMetadata) {
+              yield {
+                usage: {
+                  tokens_in: data.usageMetadata.promptTokenCount ?? 0,
+                  tokens_out: data.usageMetadata.candidatesTokenCount ?? 0,
+                },
+              };
+            }
           } catch {
             // Ignore partial SSE JSON
           }

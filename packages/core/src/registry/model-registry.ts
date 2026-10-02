@@ -17,7 +17,7 @@ import {
   PROVIDER_PROFILES,
 } from '@flappycode/providers';
 import { ModelClassifier } from './classifier.js';
-import { CapabilityProbe } from './probe.js';
+import { CapabilityProbe, ProbeResult } from './probe.js';
 import { FlappyEventBus } from '../events/event-bus.js';
 
 export interface LiveModelState {
@@ -300,6 +300,44 @@ export class ModelRegistry {
     if (model) {
       this.modelRepo.saveModel({ ...model, tool_probe_passed: passed });
     }
+  }
+
+  /** Lazily probe a model's tool calling capability and record the result (GAP-015). */
+  public async probeModel(providerId: string, modelId: string): Promise<ProbeResult> {
+    const cached = this.probe.getCachedResult(providerId, modelId);
+    if (cached !== undefined) {
+      return { outcome: cached ? 'supported' : 'unsupported' };
+    }
+
+    const cfg = this.providerRepo.get(providerId);
+    if (!cfg) {
+      return { outcome: 'transient', error: `Provider '${providerId}' not found` };
+    }
+
+    const connector = this.connectors.get(cfg.id) || this.getConnector(cfg.type);
+    const apiKey = await this.secretStore.resolveSecretRef(cfg.api_key_ref);
+
+    const startTime = Date.now();
+    const result = await this.probe.probeToolCallingWithOutcome(connector, cfg, modelId, apiKey || undefined);
+    const latency = Date.now() - startTime;
+
+    if (result.outcome === 'supported') {
+      this.recordProbeResult(providerId, modelId, true);
+    } else if (result.outcome === 'unsupported') {
+      this.recordProbeResult(providerId, modelId, false);
+    }
+
+    this.eventBus.emit({
+      type: 'model.probed' as any,
+      provider_id: providerId,
+      model_id: modelId,
+      passed: result.outcome === 'supported',
+      outcome: result.outcome,
+      latency_ms: latency,
+      timestamp: Date.now(),
+    });
+
+    return result;
   }
 
   /** Explicitly re-probe a model after capability changes (clears cache + DB state). */

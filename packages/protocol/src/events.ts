@@ -250,6 +250,17 @@ export const LogEventSchema = z.object({
 });
 export type LogEvent = z.infer<typeof LogEventSchema>;
 
+export const ModelProbedEventSchema = z.object({
+  type: z.literal('model.probed'),
+  provider_id: z.string(),
+  model_id: z.string(),
+  passed: z.boolean(),
+  outcome: z.enum(['supported', 'unsupported', 'transient']),
+  latency_ms: z.number(),
+  timestamp: z.number().int(),
+});
+export type ModelProbedEvent = z.infer<typeof ModelProbedEventSchema>;
+
 export const FlappyEventSchema = z.discriminatedUnion('type', [
   SessionStartedEventSchema,
   PlanProposedEventSchema,
@@ -276,6 +287,7 @@ export const FlappyEventSchema = z.discriminatedUnion('type', [
   RunCancelledEventSchema,
   FeedbackIterationEventSchema,
   LogEventSchema,
+  ModelProbedEventSchema,
 ]);
 export type FlappyEvent = z.infer<typeof FlappyEventSchema>;
 

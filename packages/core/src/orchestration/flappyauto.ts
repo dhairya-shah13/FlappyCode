@@ -18,6 +18,7 @@ import { DiffEngine } from '../tools/diff-engine.js';
 import { UndoEngine } from '../tools/undo-engine.js';
 import { ShellTool } from '../tools/shell-tool.js';
 import { SearchTool } from '../tools/search-tool.js';
+import { LspClient } from '../tools/lsp-client.js';
 import { BUILTIN_AGENTS } from '../agents/agent-definitions.js';
 import { FlappyEventBus } from '../events/event-bus.js';
 import { TaskPlanner } from './planner.js';
@@ -95,6 +96,7 @@ export interface FlappyAutoOptions {
   maxFeedbackIterations?: number;
   rateLimiter?: ProviderRateLimiter;
   retryPolicy?: Partial<RetryPolicy>;
+  lspClient?: LspClient;
 }
 
 interface ToolCallAssembled {
@@ -978,16 +980,13 @@ export class FlappyAutoOrchestrator {
           },
           preFlight:
             ctx.requirements.tools
-              ? async ({ model, providerCfg, connector, apiKey }) => {
+              ? async ({ model }) => {
                   // GAP-015: lazy tool-calling capability probe before first tool-role use.
-                  const passed = await this.opts.registry.probe.probeToolCalling(
-                    connector,
-                    providerCfg,
-                    model.model_id,
-                    apiKey
+                  const result = await this.opts.registry.probeModel(
+                    model.provider_id,
+                    model.model_id
                   );
-                  this.opts.registry.recordProbeResult(model.provider_id, model.model_id, passed);
-                  return passed;
+                  return result.outcome === 'supported';
                 }
               : undefined,
         },
@@ -1300,7 +1299,29 @@ export class FlappyAutoOrchestrator {
       }
 
       this.stageChange(cleanPath, args.content);
-      const stagedMsg = `Staged edit for ${cleanPath}`;
+      let stagedMsg = `Staged edit for ${cleanPath}`;
+
+      // GAP-016: LSP diagnostics integration
+      if (this.opts.lspClient) {
+        try {
+          await this.opts.lspClient.notifyChange(cleanPath, args.content, this.opts.projectRoot);
+          const diags = await this.opts.lspClient.getDiagnostics(this.opts.projectRoot, cleanPath);
+          if (diags.length > 0) {
+            const diagSummary = diags
+              .map(
+                (d) =>
+                  `[LSP ${d.severity.toUpperCase()}] Line ${d.line}: ${d.message}${
+                    d.code ? ` (${d.code})` : ''
+                  }`
+              )
+              .join('\n');
+            stagedMsg += `\nLSP Diagnostics:\n${diagSummary}`;
+          }
+        } catch {
+          // Graceful degradation per SI-003
+        }
+      }
+
       this.recordToolCall(node, {
         id: tc.id,
         tool: 'write_file',

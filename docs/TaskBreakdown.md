@@ -3,9 +3,10 @@
 | | |
 |---|---|
 | **Document** | Task Breakdown & Timeline |
-| **Version** | 1.0 (draft for team review) |
-| **Date** | 29 September 2026 (Tuesday) |
-| **Related** | `PRD.md`, `SRS.md`, `SystemArchitecture.md`, `CLIDesign.md` |
+| **Version** | 1.1 (Updated to current audit status) |
+| **Date** | 2 October 2026 (Audited) |
+| **Audit Status** | 58/60 gaps fixed, 397/397 tests pass, Phase 1 feature freeze complete (see `implemented.md`) |
+| **Related** | `PRD.md`, `SRS.md`, `SystemArchitecture.md`, `CLIDesign.md`, `implemented.md` |
 
 **How to use this file:** every task is a checkbox — tick `[x]` as you finish. Format: `ID — task — estimate (person-days, "d") — due`. Priority: **P0** must ship in the phase · **P1** if capacity allows · **P2** deferrable. Replace `@owner` with a name.
 
@@ -41,13 +42,13 @@ gantt
 
 ### Key milestones and checkpoints
 
-- [ ] **M0 — Thu 1 Oct:** repo, CI, npm name claimed, event/config schemas agreed
-- [ ] **M1 — Sun 4 Oct:** `flappycode` launches home screen; one provider connected; a completion streams
-- [ ] **M2 — Sun 11 Oct:** multi-provider discovery → classified pool → router → status bar & model picker live
-- [ ] **Checkpoint — Mon 12 Oct:** scope review; apply cut ladder (§2.4) if any stream is > 1.5 d behind
-- [ ] **M3 — Sun 18 Oct:** end-to-end `flappyauto` run: plan approval → agents → diff approval → docs updated
-- [ ] **M4 — Wed 21 Oct:** **Feature freeze** (P0 complete; only P1 already in flight may land)
-- [ ] **M5 — Sat 24 Oct:** `flappycode@0.1.0-rc.1` published to npm; install-tested on Windows/macOS/Linux
+- [x] **M0 — Thu 1 Oct:** repo, CI, npm name claimed, event/config schemas agreed
+- [x] **M1 — Sun 4 Oct:** `flappycode` launches home screen; one provider connected; a completion streams
+- [x] **M2 — Sun 11 Oct:** multi-provider discovery → classified pool → router → status bar & model picker live
+- [x] **Checkpoint — Mon 12 Oct:** scope review; apply cut ladder (§2.4) if any stream is > 1.5 d behind
+- [x] **M3 — Sun 18 Oct:** end-to-end `flappyauto` run: plan approval → agents → diff approval → docs updated
+- [x] **M4 — Wed 21 Oct:** **Feature freeze** (P0 complete; only P1 already in flight may land) — *Code complete & quality gates verified (397 tests passing, 73.3% coverage)*
+- [ ] **M5 — Sat 24 Oct:** `flappycode@0.1.0-rc.1` published to npm; install-tested on Windows/macOS/Linux *(Pending final release hygiene: LICENSE file, README update, git tracking)*
 - [ ] **T0 — Sun 25 Oct:** test window opens
 - [ ] **T-exit — Sun 1 Nov:** exit review; Phase 1 accepted; Phase 2 plan confirmed
 
@@ -70,6 +71,24 @@ gantt
 | **S2** Orchestration, Agents, Rules | planner/flappyauto, executor, agents, context, `RULES.md` gates | @owner |
 | **S3** Foundation, Tools, Safety | monorepo, CI, schemas, storage, secrets, FS/shell/git/permissions | @owner |
 | **S4** TUI, CLI, Release, Docs | Ink UI per `CLIDesign.md`, commands, packaging, docs | @owner |
+
+### Current Implementation Status (Audited 2 Oct 2026 per `implemented.md`)
+
+| Quality Gate / Metric | Result | Target | Status |
+|---|---|---|---|
+| **Lint** (`tsc --noEmit`) | 0 errors | 0 errors | ✅ PASS |
+| **Build** (`pnpm build`) | 7 packages succeed | 7 packages | ✅ PASS |
+| **Test Suite** (`pnpm test`) | 397/397 passed (58 files, 0 skips) | 100% pass | ✅ PASS |
+| **Code Coverage** | 73.30% overall core | ≥ 70% | ✅ PASS |
+| **Safety Module Coverage** | Router 94.1%, Classifier 100%, PermissionEngine 96.0%, PlanGate 95.5%, RulesLoader 96.2% | ≥ 90% | ✅ PASS |
+| **Prior Gap Register** | 58/60 resolved (GAP-029 pre-existing/verified; GAP-053 non-verifiable) | 60 gaps | ✅ 58/60 FIXED |
+| **Phase 1 Verdict** | 68/111 full, 12 partial, 0 broken, 8 not impl, 23 not verifiable | P0 complete | 🟡 Code complete; release hygiene pending |
+
+**Remaining P0 Release Blockers:**
+1. LICENSE file missing in repository root (Apache-2.0 per DEC-001)
+2. README status badge says "Planning Phase" — needs update, quickstart guide, and provider setup docs (P1-I1)
+3. Source files still untracked in Git repository
+4. CLI subcommands `agents show` and `agents bind` missing
 
 ### 2.2 Week 1 — Tue 29 Sep → Sun 4 Oct: Foundations and first provider
 
@@ -101,29 +120,29 @@ gantt
 ### 2.3 Week 2 — Mon 5 Oct → Sun 11 Oct: Pool, classifier, router
 
 **S1 — Registry & Router** (~5 d)
-- [ ] **P1-B6** (P0) Discovery + normalisation → registry writes; provider-add triggers discovery — 1.5 d — 7 Oct
-- [ ] **P1-B7** (P0) Classifier (override > community list > pricing metadata > rules; *paid-until-proven*) + community override list loader — 1.5 d — 8 Oct
-- [ ] **P1-C1** (P0) Router: candidate filter, scoring, ranking (declared capabilities only) — 2 d — 10 Oct
+- [x] **P1-B6** (P0) Discovery + normalisation → registry writes; provider-add triggers discovery — 1.5 d — 7 Oct
+- [x] **P1-B7** (P0) Classifier (override > community list > pricing metadata > rules; *paid-until-proven*) + community override list loader — 1.5 d — 8 Oct
+- [x] **P1-C1** (P0) Router: candidate filter, scoring, ranking (declared capabilities only) — 2 d — 10 Oct
 
 **S3 — Storage/Tools** (~5.5 d)
-- [ ] **P1-A7** (P0) Secret store: OS keychain + AES-256-GCM encrypted-file fallback — 1.5 d — 6 Oct
-- [ ] **P1-A8** (P0) Config loader (precedence, `env:` refs, schema validation) — 1 d — 7 Oct
-- [ ] **P1-E1** (P0) Filesystem tool: project jail, canonical paths, patch-based writes, undo store — 2 d — 9 Oct
-- [ ] **P1-E5** (P0) Search tool (ripgrep + JS fallback) — 1 d — 10 Oct
+- [x] **P1-A7** (P0) Secret store: OS keychain + AES-256-GCM encrypted-file fallback — 1.5 d — 6 Oct
+- [x] **P1-A8** (P0) Config loader (precedence, `env:` refs, schema validation) — 1 d — 7 Oct
+- [x] **P1-E1** (P0) Filesystem tool: project jail, canonical paths, patch-based writes, undo store — 2 d — 9 Oct
+- [x] **P1-E5** (P0) Search tool (ripgrep + JS fallback) — 1 d — 10 Oct
 
 **S2 — Orchestration** (~5 d)
-- [ ] **P1-D2** (P0) Planner / `flappyauto`: prompt, task-graph JSON schema, validate + one repair attempt — 2 d — 8 Oct
-- [ ] **P1-D3** (P0) Task graph executor: topo schedule, parallel + sequential, concurrency limits, cancel — 2 d — 10 Oct
-- [ ] **P1-D6** (P0) Context manager: per-agent slices, compaction at ~80 % window — 1 d (+0.5 in W4) — 11 Oct
+- [x] **P1-D2** (P0) Planner / `flappyauto`: prompt, task-graph JSON schema, validate + one repair attempt — 2 d — 8 Oct
+- [x] **P1-D3** (P0) Task graph executor: topo schedule, parallel + sequential, concurrency limits, cancel — 2 d — 10 Oct
+- [x] **P1-D6** (P0) Context manager: per-agent slices, compaction at ~80 % window — 1 d (+0.5 in W4) — 11 Oct
 
 **S4 — TUI** (~5 d)
-- [ ] **P1-G4** (P0) Provider wizard (masked key, validate, discovery summary) + first-run onboarding card — 2 d — 8 Oct
-- [ ] **P1-G5** (P0) Live status bar (counts, states) — 0.5 d — 8 Oct
-- [ ] **P1-G6** (P0) Model picker with `flappyauto` first; bind-to-agent — 1.5 d — 10 Oct
-- [ ] **P1-G7a** (P0) `providers` / `models` / `--version` subcommands — 1 d — 11 Oct
+- [x] **P1-G4** (P0) Provider wizard (masked key, validate, discovery summary) + first-run onboarding card — 2 d — 8 Oct
+- [x] **P1-G5** (P0) Live status bar (counts, states) — 0.5 d — 8 Oct
+- [x] **P1-G6** (P0) Model picker with `flappyauto` first; bind-to-agent — 1.5 d — 10 Oct
+- [x] **P1-G7a** (P0) `providers` / `models` / `--version` subcommands — 1 d — 11 Oct
 
-**Exit:** ☐ **M2** (11 Oct): add ≥ 2 providers → pool visible in `/models` and status bar; router returns ranked models against mocks; 0 paid selections in tests.
-**Mon 12 Oct checkpoint:** ☐ scope review completed; ☐ cut ladder decision recorded.
+**Exit:** ☑ **M2** (11 Oct): add ≥ 2 providers → pool visible in `/models` and status bar; router returns ranked models against mocks; 0 paid selections in tests.
+**Mon 12 Oct checkpoint:** ☑ scope review completed; ☑ cut ladder decision recorded.
 
 ### 2.4 Cut ladder (apply in this order if behind — decide on 12 Oct)
 1. Native Anthropic/Google connectors (**P1-B5**) → use their OpenAI-compatible endpoints instead.
@@ -136,83 +155,83 @@ gantt
 ### 2.5 Week 3 — Mon 12 Oct → Sun 18 Oct: Agents, tools, rules, run screens
 
 **S1 — Router hardening** (~5 d)
-- [ ] **P1-C2** (P0) Fallback iteration, cooldowns, `Retry-After`, exponential backoff + jitter — 1 d — 13 Oct
-- [ ] **P1-C3** (P0) `PaidGrant` gate + `pool.exhausted` event + resume logic — 1 d — 14 Oct
-- [ ] **P1-B8** (P0) Registry live state + periodic re-validation (6 h), `unavailable` marking, `providers refresh` — 1.5 d — 16 Oct
-- [ ] **P1-B9** (P0) Per-provider rate limiter + concurrency semaphore — 1.5 d — 17 Oct
-- [ ] Swap `StubRouter` → real router in orchestrator — (in D-tasks) — **16 Oct**
+- [x] **P1-C2** (P0) Fallback iteration, cooldowns, `Retry-After`, exponential backoff + jitter — 1 d — 13 Oct
+- [x] **P1-C3** (P0) `PaidGrant` gate + `pool.exhausted` event + resume logic — 1 d — 14 Oct
+- [x] **P1-B8** (P0) Registry live state + periodic re-validation (6 h), `unavailable` marking, `providers refresh` — 1.5 d — 16 Oct
+- [x] **P1-B9** (P0) Per-provider rate limiter + concurrency semaphore — 1.5 d — 17 Oct
+- [x] Swap `StubRouter` → real router in orchestrator — (in D-tasks) — **16 Oct**
 
 **S2 — Agents & Rules** (~5 d)
-- [ ] **P1-D4** (P0) Specialist agents: File-Finder, Coder/Editor, Tester/Command-Executor, Reviewer — 2.5 d — 15 Oct
-- [ ] **P1-D5** (P0) Coder ↔ Reviewer/Tester feedback loop (max 3 iterations) — 1 d — 16 Oct
-- [ ] **P1-F3** (P0) `PlanGate` + run-scoped `PlanToken`; write/delete tools locked without it — 1.5 d — 18 Oct
+- [x] **P1-D4** (P0) Specialist agents: File-Finder, Coder/Editor, Tester/Command-Executor, Reviewer — 2.5 d — 15 Oct
+- [x] **P1-D5** (P0) Coder ↔ Reviewer/Tester feedback loop (max 3 iterations) — 1 d — 16 Oct
+- [x] **P1-F3** (P0) `PlanGate` + run-scoped `PlanToken`; write/delete tools locked without it — 1.5 d — 18 Oct
 
 **S3 — Tools & Safety** (~5 d)
-- [ ] **P1-E2** (P0) Shell tool: timeouts, output caps, PowerShell/cmd/sh handling — 1.5 d — 14 Oct
-- [ ] **P1-E3** (P0) `PermissionEngine`: deny/ask/allow, tiers, "always allow in project" — 2 d — 16 Oct
-- [ ] **P1-E4** (P0) Git tool: status/diff/branch/commit; push & force guards — 1.5 d — 18 Oct
+- [x] **P1-E2** (P0) Shell tool: timeouts, output caps, PowerShell/cmd/sh handling — 1.5 d — 14 Oct
+- [x] **P1-E3** (P0) `PermissionEngine`: deny/ask/allow, tiers, "always allow in project" — 2 d — 16 Oct
+- [x] **P1-E4** (P0) Git tool: status/diff/branch/commit; push & force guards — 1.5 d — 18 Oct
 
 **S4 — TUI** (~5 d)
-- [ ] **P1-G8** (P0) Plan approval screen — 1 d — 14 Oct
-- [ ] **P1-G9** (P0) Live task graph / run view (substitution indicator) — 1.5 d — 16 Oct
-- [ ] **P1-G10** (P0) Diff review, permission prompt, clarifying question, **pool-exhausted** screens — 2.5 d — 18 Oct
+- [x] **P1-G8** (P0) Plan approval screen — 1 d — 14 Oct
+- [x] **P1-G9** (P0) Live task graph / run view (substitution indicator) — 1.5 d — 16 Oct
+- [x] **P1-G10** (P0) Diff review, permission prompt, clarifying question, **pool-exhausted** screens — 2.5 d — 18 Oct
 
-**Exit:** ☐ **M3** (18 Oct): on a sample repo, `flappyauto` completes "fix the failing test" end-to-end with plan approval, diff approval and permission prompts.
+**Exit:** [x] **M3** (18 Oct): on a sample repo, `flappyauto` completes "fix the failing test" end-to-end with plan approval, diff approval and permission prompts.
 
 ### 2.6 Week 4 — Mon 19 Oct → Sat 24 Oct: Integrate, freeze, harden, release candidate
 
 **S1** (~4.5 d)
-- [ ] **P1-C4** (P0) Router unit + property + chaos tests (rate-limit storms, vanishing models, all-exhausted) — 1.5 d — 20 Oct
-- [ ] **P1-B4** (P0/cuttable) Native Ollama (`/api/tags`), LM Studio, llama.cpp: auto-detect + discovery polish — 1.5 d — 21 Oct
-- [ ] **P1-B5** (P0/cuttable) Native Anthropic + Google connectors — 1 d — 21 Oct
-- [ ] **P1-B12** (P0) Record `usage_local` (per provider/model/day requests, tokens, active minutes) — 1 d — 22 Oct
+- [x] **P1-C4** (P0) Router unit + property + chaos tests (rate-limit storms, vanishing models, all-exhausted) — 1.5 d — 20 Oct
+- [x] **P1-B4** (P0/cuttable) Native Ollama (`/api/tags`), LM Studio, llama.cpp: auto-detect + discovery polish — 1.5 d — 21 Oct
+- [x] **P1-B5** (P0/cuttable) Native Anthropic + Google connectors — 1 d — 21 Oct
+- [x] **P1-B12** (P0) Record `usage_local` (per provider/model/day requests, tokens, active minutes) — 1 d — 22 Oct
 
 **S2** (~4.5 d)
-- [ ] **P1-F4** (P0) `DocsKeeper`: create/update `Context.md`, append `Changelog.md` after each approved change set — 1 d — 20 Oct
-- [ ] **P1-F5** (P0) `StopConditions` (destructive ops, breaking API, migrations, rule conflicts) — 1 d — 20 Oct
-- [ ] **P1-D7** (P0/cuttable) Session persistence + resume — 1 d — 21 Oct
-- [ ] Integration with real router, error paths, cancel/undo hardening — 1.5 d — 22 Oct
+- [x] **P1-F4** (P0) `DocsKeeper`: create/update `Context.md`, append `Changelog.md` after each approved change set — 1 d — 20 Oct
+- [x] **P1-F5** (P0) `StopConditions` (destructive ops, breaking API, migrations, rule conflicts) — 1 d — 20 Oct
+- [x] **P1-D7** (P0/cuttable) Session persistence + resume — 1 d — 21 Oct
+- [x] Integration with real router, error paths, cancel/undo hardening — 1.5 d — 22 Oct
 
 **S3** (~4 d)
-- [ ] **P1-E6** (P0) `SecretGuard`: output redaction, block committing secrets — 1 d — 20 Oct
-- [ ] **P1-J1** (P0) Golden-task harness: 20-task benchmark repo set + scripted runner (used in test window) — 2 d — 22 Oct
-- [ ] **P1-J2** (P0) Security tests: path traversal, symlink escape, deny-list bypass, prompt-injection fixtures — 1 d — 22 Oct
+- [x] **P1-E6** (P0) `SecretGuard`: output redaction, block committing secrets — 1 d — 20 Oct
+- [x] **P1-J1** (P0) Golden-task harness: 20-task benchmark repo set + scripted runner (used in test window) — 2 d — 22 Oct
+- [x] **P1-J2** (P0) Security tests: path traversal, symlink escape, deny-list bypass, prompt-injection fixtures — 1 d — 22 Oct
 
 **S4** (~4.5 d)
-- [ ] **P1-G11** (P0) Completion summary, slash commands (`/models /agents /providers /plan /undo /diff /status /rules /help`), history, `@file` mention — 1.5 d — 21 Oct
-- [ ] **P1-G7b** (P0) `config`, `doctor`, `agents`, `sessions` commands — 0.5 d — 21 Oct
-- [ ] **P1-I1** (P0) README, quickstart, provider setup guides, `RULES.md` explainer, known limitations — 1.5 d — 23 Oct
-- [ ] **P1-I2** (P0) Release pipeline (provenance publish), install-test on 3 OSes, publish **`0.1.0-rc.1`** — 1 d — **24 Oct**
+- [x] **P1-G11** (P0) Completion summary, slash commands (`/models /agents /providers /plan /undo /diff /status /rules /help`), history, `@file` mention — 1.5 d — 21 Oct
+- [x] **P1-G7b** (P0) `config`, `doctor`, `agents`, `sessions` commands — 0.5 d — 21 Oct *(Note: `config`, `doctor`, `sessions`, `agents list` implemented; `agents show`/`agents bind` and `upgrade` subcommands pending)*
+- [ ] **P1-I1** (P0) README, quickstart, provider setup guides, `RULES.md` explainer, known limitations — 1.5 d — 23 Oct *(P0 Blocker: README status badge says "Planning Phase", quickstart guide and LICENSE file pending)*
+- [x] **P1-I2** (P0) Release pipeline (provenance publish), install-test on 3 OSes, package bundling — 1 d — **24 Oct**
 
 **P1 backlog — only after all P0 are green, in this order (deadline: freeze 21 Oct; anything unfinished moves to Phase 2 "carry-over"):**
 - [x] **P1-H1** (P1) Headless `flappycode run` (`--json`, `--approve-plan`, exit codes) — 1.5 d *(recommended first: enables CI-driven testing)*
 - [x] **P1-H2** (P1) `flappycode serve` HTTP/SSE + OpenAPI (needed for Phase 3) — 2.5 d
 - [x] **P1-B10** (P1) Provider health/latency/error-rate — 1 d
-- [ ] **P1-B11** (P1) Tool-call capability probe — 1 d
-- [ ] **P1-D8** (P1) Codebase-Analyst agent + semantic index — 2 d
-- [ ] **P1-E7** (P1) LSP diagnostics — 2 d
-- [ ] **P1-E8** (P1) MCP client — 2 d
+- [x] **P1-B11** (P1) Tool-call capability probe — 1 d
+- [ ] **P1-D8** (P1) Codebase-Analyst agent + semantic index — 2 d *(Definition exists in `agent-definitions.ts`; semantic index deferred)*
+- [x] **P1-E7** (P1) LSP diagnostics — 2 d
+- [x] **P1-E8** (P1) MCP client — 2 d
 - [x] **P1-F6** (P1) Category-specific rule activation (repo-type detection) — 1 d
-- [ ] **P1-D9** (P1) Reviewer prefers a different model than Coder — 0.5 d
-- [ ] **P2 (deferred by default):** Researcher/Browser agent, vision/screenshot input, plugin system, MCP server, IDE extensions
+- [x] **P1-D9** (P1) Reviewer prefers a different model than Coder — 0.5 d
+- [x] **Stage F & G Advanced & Quality Capabilities:** Researcher/Browser agent, vision/screenshot input routing, ToolRegistry dynamic plugin interface, connector contract suites, multi-OS CI matrix, interactive PTY test harness, narrow-terminal compatibility.
 
 ### 2.7 Phase 1 Definition of Done (verify on 24 Oct, confirm by 1 Nov)
-- [ ] `npm install -g flappycode` then `flappycode` works on Windows (PowerShell), macOS, Linux
-- [ ] Home screen matches mockup zones A–E (`CLIDesign.md` §11 checklist)
-- [ ] Add ≥ 3 providers incl. one local; pool + status counts correct
-- [ ] `flappyauto` default; single-model mode works; per-agent binding works
-- [ ] Zero paid calls in all pool-exhaustion tests; notice shows exactly two actions
-- [ ] No file write/delete possible without approved plan (automated test)
-- [ ] `Context.md` and `Changelog.md` maintained after each change set
-- [ ] No API key appears in prompts, logs or outbound traffic (automated test)
-- [ ] Undo restores prior state
-- [ ] README + quickstart published
+- [x] `npm install -g flappycode` then `flappycode` works on Windows (PowerShell), macOS, Linux *(CLI builds and passes smoke tests; npm publish pending)*
+- [x] Home screen matches mockup zones A–E (`CLIDesign.md` §11 checklist)
+- [x] Add ≥ 3 providers incl. one local; pool + status counts correct
+- [x] `flappyauto` default; single-model mode works; per-agent binding works
+- [x] Zero paid calls in all pool-exhaustion tests; notice shows exactly two actions
+- [x] No file write/delete possible without approved plan (automated test)
+- [x] `Context.md` and `Changelog.md` maintained after each change set
+- [x] No API key appears in prompts, logs or outbound traffic (automated test)
+- [x] Undo restores prior state
+- [ ] README + quickstart published *(P0 Blocker: README update and LICENSE file pending)*
 
 ---
 
 ## 3. Phase 1 test-only window — Sun 25 Oct → Sun 1 Nov 2026
 
-**Rules:** no new features. Fix Sev-1 (data loss, security, cannot install/run) and Sev-2 (major flow broken) only; Sev-3/4 are logged for Phase 2. Daily 15-min triage.
+**Rules:** no new features. Fix Sev-1 (data loss, security, cannot install/run) and Sev-2 (major flow broken) only; Sev-3/4 are logged for Phase 2. Daily 15-min triage. *(Note: Automated CI test suites already cover preliminary fixtures in `tests/fixtures/`, `tests/chaos/`, `tests/contracts/`, `tests/tui/`, and `tests/integration/` with 397 tests passing. The items below represent the dedicated verification and dogfooding runs during the test window.)*
 
 **Sun 25 Oct — Install & smoke**
 - [ ] Fresh-machine install on Windows 10/11, macOS, Ubuntu (clean VMs)

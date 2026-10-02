@@ -24,6 +24,8 @@ export class HybridSecretStore implements SecretStore {
     let baseDir: string;
     if (isWindows) {
       baseDir = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
+    } else if (process.platform === 'darwin') {
+      baseDir = path.join(os.homedir(), 'Library', 'Application Support');
     } else {
       baseDir = process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share');
     }

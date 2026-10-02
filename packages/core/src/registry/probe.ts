@@ -16,18 +16,26 @@ const PROBE_TOOL: ToolDefinition = {
   },
 };
 
+export type ProbeOutcome = 'supported' | 'unsupported' | 'transient';
+
+export interface ProbeResult {
+  outcome: ProbeOutcome;
+  error?: string;
+}
+
 export class CapabilityProbe {
   private probeCache: Map<string, boolean> = new Map();
 
-  public async probeToolCalling(
+  public async probeToolCallingWithOutcome(
     connector: ProviderConnector,
     cfg: ProviderConfig,
     modelId: string,
     apiKey?: string
-  ): Promise<boolean> {
+  ): Promise<ProbeResult> {
     const cacheKey = `${cfg.id}:${modelId}`;
     if (this.probeCache.has(cacheKey)) {
-      return this.probeCache.get(cacheKey)!;
+      const cached = this.probeCache.get(cacheKey)!;
+      return { outcome: cached ? 'supported' : 'unsupported' };
     }
 
     const req: CompletionRequest = {
@@ -53,11 +61,38 @@ export class CapabilityProbe {
         }
       }
       this.probeCache.set(cacheKey, sawToolCall);
-      return sawToolCall;
-    } catch {
-      this.probeCache.set(cacheKey, false);
-      return false;
+      return { outcome: sawToolCall ? 'supported' : 'unsupported' };
+    } catch (err: any) {
+      const msg = String(err?.message || err || '').toLowerCase();
+      // If the model or endpoint explicitly reports tools unsupported or bad request due to tools
+      const isExplicitUnsupported =
+        msg.includes('tool') &&
+        (msg.includes('not supported') ||
+          msg.includes('unsupported') ||
+          msg.includes('not allow') ||
+          msg.includes('unknown parameter') ||
+          msg.includes('unexpected parameter') ||
+          msg.includes('does not support function'));
+
+      if (isExplicitUnsupported) {
+        this.probeCache.set(cacheKey, false);
+        return { outcome: 'unsupported', error: err?.message };
+      }
+
+      // Otherwise treat as transient failure (network, 429 rate limit, 500 server error, abort)
+      // Do not permanently cache failure on transient issues
+      return { outcome: 'transient', error: err?.message };
     }
+  }
+
+  public async probeToolCalling(
+    connector: ProviderConnector,
+    cfg: ProviderConfig,
+    modelId: string,
+    apiKey?: string
+  ): Promise<boolean> {
+    const res = await this.probeToolCallingWithOutcome(connector, cfg, modelId, apiKey);
+    return res.outcome === 'supported';
   }
 
   public getCachedResult(providerId: string, modelId: string): boolean | undefined {

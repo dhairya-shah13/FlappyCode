@@ -331,6 +331,30 @@ export class FallbackExecutor {
       }
 
       const selected = route.selected;
+
+      if (options.preFlight) {
+        const providerCfg = this.opts.providerRepo.get(selected.provider_id);
+        if (providerCfg) {
+          const connector = this.opts.registry.getConnector(providerCfg.type);
+          const apiKey = await this.opts.secretStore.resolveSecretRef(providerCfg.api_key_ref);
+          try {
+            const passed = await options.preFlight({
+              model: selected,
+              providerCfg,
+              connector,
+              apiKey: apiKey || undefined,
+            });
+            if (!passed) {
+              excluded.push(selected.model_id);
+              continue;
+            }
+          } catch {
+            excluded.push(selected.model_id);
+            continue;
+          }
+        }
+      }
+
       if (!usedIds.has(selected.model_id)) {
         usedIds.add(selected.model_id);
         options.onModelUsed?.(selected, 'isPinned' in route ? route.isPinned : false);

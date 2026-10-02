@@ -30,15 +30,16 @@ export class FsJail {
   public resolveSafePath(userPath: string): string {
     let cleanPath = userPath.trim().replace(/^['"]|['"]$/g, '');
     
+    // If path has a leading slash without drive letter (e.g. /src/math.ts), treat as repo-relative
+    if ((cleanPath.startsWith('/') || cleanPath.startsWith('\\')) && !/^[a-zA-Z]:[/\\]/.test(cleanPath)) {
+      cleanPath = cleanPath.replace(/^[/\\]+/, '');
+    }
+
     // Normalize relative vs absolute target
     let resolved: string;
     if (path.isAbsolute(cleanPath)) {
       resolved = path.normalize(cleanPath);
     } else {
-      // If path has a leading slash without drive letter (e.g. /src/math.ts), treat as repo-relative
-      if ((cleanPath.startsWith('/') || cleanPath.startsWith('\\')) && !/^[a-zA-Z]:[/\\]/.test(cleanPath)) {
-        cleanPath = cleanPath.replace(/^[/\\]+/, '');
-      }
       resolved = path.normalize(path.resolve(this.canonicalRoot, cleanPath));
     }
 

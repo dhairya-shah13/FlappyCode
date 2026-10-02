@@ -75,9 +75,10 @@ export class BannerRenderer {
     if (width < 45) return '';
     const line1 = 'Multi-Provider  •  Multi-Agent  •  Free Models  •  One Assistant';
     const line2 = 'Your connected providers. All the free models. One powerful coding agent.';
+    const shortLine = 'Free Models  •  Multi-Provider  •  Coding Agent';
 
     if (width < 70) {
-      return ` ${Palette.subtle(line2)}\n`;
+      return ` ${Palette.subtle(shortLine.slice(0, width - 2))}\n`;
     }
 
     return ` ${Palette.bold(line1)}\n ${Palette.subtle(line2)}\n`;

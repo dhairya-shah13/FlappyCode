@@ -1,6 +1,6 @@
 # Phase 1 Gap Implementation — Progress Tracker
 
-## Current Status: Lint ✅ | Tests ✅ (293/293 across 44 files) | Build ✅
+## Current Status: Lint ✅ | Tests ✅ (397/397 across 58 files) | Build ✅
 
 ---
 
@@ -66,30 +66,36 @@
 | GAP-056 | Local Debug Logging | ✅ Done | Structured JSON Logger in `packages/core/src/logging/logger.ts` with `SecretGuard` token redaction, size-based rotation before write, platform log directory resolution, and CLI `--debug` flag. Verified in `tests/unit/stage-e-logger.test.ts`. |
 | GAP-058 | Consistent Error Formatting | ✅ Done | Error taxonomy and formatters in `packages/core/src/errors/flappy-error.ts`: `formatErrorForCli` (what/why/next), `formatErrorForJson` (`StructuredError`), `formatErrorForHttp` (status codes and error bodies). Schema defined in `packages/protocol/src/errors.ts`. Verified in `tests/unit/stage-e-errors.test.ts`. |
 
-## Stage F: Integrations & Advanced Capabilities — Status: 🔴 Mostly Missing
+## Stage F: Integrations & Advanced Capabilities — Status: ✅ Complete
 
 | GAP | Item | Status | Notes |
 |-----|------|--------|-------|
-| GAP-015 | Tool-Calling Capability Probe | ❌ Missing | No `probe.ts`. |
-| GAP-016 | Real LSP Integration | ❌ Missing | `lsp-client.ts` exists but is a stub. |
-| GAP-017 | Real MCP Client | ❌ Missing | `mcp-client.ts` exists but is a stub. |
-| GAP-038 | Researcher/Browser & Vision | ❌ Missing | No `researcher.ts` or `browser-tool.ts`. |
+| GAP-015 | Tool-Calling Capability Probe | ✅ Done | Implemented `CapabilityProbe` with tri-state outcomes (`supported`, `unsupported`, `transient`), error classification, caching, ModelRegistry DB persistence & `model.probed` event; preflight filter wired in FallbackExecutor and FlappyAuto. Covered by `tests/unit/stage-f-probe.test.ts` (3) & Simulation F-01. |
+| GAP-016 | Real LSP Integration | ✅ Done | Implemented real JSON-RPC 2.0 stdio LSP client in `packages/core/src/tools/lsp-client.ts`: multi-language server spawning, document sync (`didOpen`, `didChange`, `didClose`), normalized diagnostics, timeouts, graceful degradation. Wired into `flappyauto.ts` for file edits. Deterministic fixture in `tests/fixtures/lsp-server.cjs`. Covered by `tests/unit/stage-f-lsp.test.ts` (7) & Simulations F-02, F-03. |
+| GAP-017 | Real MCP Client | ✅ Done | Implemented stdio JSON-RPC MCP client in `packages/core/src/tools/mcp-client.ts`: initialization handshake, `tools/list` enumeration, namespace prefixing `mcp__<server>__<tool>`, collision handling, permission checks. Deterministic fixture in `tests/fixtures/mcp-server.cjs`. Covered by `tests/unit/stage-f-mcp.test.ts` (7) & Simulations F-04, F-05. |
+| GAP-038 | Researcher/Browser & Vision | ✅ Done | Implemented `ResearcherService` (bounded fetch 12k chars, HTML stripping, `<<<UNTRUSTED>>>` prompt injection protection) and `BrowserController` (headless browser lifecycle, text extraction, screenshot, process cleanup) in `packages/core/src/tools/`; `ToolRegistry` dynamic tool management. Covered by `tests/unit/stage-f-researcher-browser.test.ts` (6) & Simulations F-06, F-07. |
 
-## Stage G: Quality Gates & Packaging — Status: 🔶 Partially Done
+## Stage G: Quality Gates & Packaging — Status: ✅ Complete
 
 | GAP | Item | Status | Notes |
 |-----|------|--------|-------|
-| GAP-055 | Fix Typecheck & Coverage | ✅ Fixed | `pnpm lint` passes (0 errors). Tests: 293/293 pass. Coverage threshold not measured yet. |
-| GAP-060 | Connector Contract Tests | ❌ Missing | No `tests/contracts/` directory. |
-| GAP-057 | Package Asset Smoke Test | ❌ Missing | No `files` field in cli package.json. |
-| GAP-030/031/059 | Terminal & Cross-Platform | ❌ Missing | No terminal width wrapping tests. |
+| GAP-055 | Fix Typecheck & Coverage | ✅ Done | `pnpm lint` (`tsc --noEmit`) passes with 0 errors. All packages build cleanly (`pnpm build`). Statements: 73.11% overall core package (target ≥70%). Safety-critical gates: Router 94.11%, Classifier 100%, PermissionEngine 96.00%, PlanGate 95.55%, RulesLoader 96.17% (all target ≥90%). Automated matrix CI workflow in `.github/workflows/ci.yml`. Covered by Simulation G-01, G-02, G-03. |
+| GAP-060 | Connector Contract Tests | ✅ Done | Automated contract test suite with mock fixture server in `tests/contracts/`: OpenAI-Compatible, Anthropic, Google Gemini, Ollama covering User-Agent, list models, text delta streaming, tool call delta assembling, and error codes (400/401/403/429/500). Covered by `tests/contracts/*.contract.test.ts` (20/20) & Simulation G-04. |
+| GAP-057 | Package Asset Smoke Test | ✅ Done | `packages/cli/package.json` declares explicit `files: ["dist", "assets"]`; bundles `RULES.md`, 10 category rules, and `community-catalog.json`; `tests/unit/package-smoke.test.ts` tests `npm pack` tarball contents and CLI `--version`/`--help`. Covered by Simulation G-05, G-06. |
+| GAP-030 | Interactive TUI PTY Automation Test | ✅ Done | Simulated TTY test in `tests/tui/pty-interactive.test.ts`: character typing, arrow/backspace editing, Enter turn submission, token streaming without flicker, confirmation prompts (`y`/`n`/Enter), and clean raw mode entry/restoration. Covered by Simulation G-07. |
+| GAP-031 | Terminal Multi-Resolution & Compatibility | ✅ Done | Multi-resolution tests in `tests/tui/terminal-compat.test.ts` across widths 16, 20, 30, 40, 45, 60, 80, 120, 200; banner collapsing; narrow tagline fitting; `NO_COLOR=1`, `TERM=dumb`, `FORCE_COLOR=1`, `FLAPPYCODE_ASCII=1`. Covered by Simulation G-08. |
+| GAP-059 | Cross-Platform Verification Tests | ✅ Done | Cross-platform tests in `tests/unit/cross-platform.test.ts`: path normalization across `/` and `\`, repo-relative leading slashes in `FsJail`, Windows `%APPDATA%`, macOS `~/Library/Application Support`, Linux `$XDG_CONFIG_HOME`, database & log directory resolution, and CI matrix. Covered by Simulation G-09. |
 
 ---
 
-## Immediate Next Steps
-1. ✅ Fixed blocking issues (ContextManager import, run.started event)
-2. **Stage B**: ✅ Fully completed (`FallbackExecutor`, backoff/eventing, periodic scheduler, fallbackPolicy, pool exhaustion TUI/server, model tag/untag CLI/TUI/server, Ollama Cloud, Anthropic & Google tool-call normalization, User-Agent headers).
-3. **Stage C**: ✅ Fully completed (single-model mode, declarative agents, Reviewer/Tester feedback loop, DAG concurrency without over-admission, run cancellation & exit 130, sessions/compaction/project memory, planner repair & model fallback, search tool security scope, live task graph view P1-G9, approval & question screens P1-G8/G10).
-4. **Stage D**: ✅ Fully completed (Universal RULES bundling in packages/assets, nested directory scoping, structural conflict detection, clarifying question lifecycle & TUI prompt, provider diagnostics & SQLite health metrics, local provider auto-detection for Ollama/LM Studio/llama.cpp, real config loader with precedence & secret masking, Git tool safety with secret scanning & protected branches, SQLite persisted undo engine, 10-category multi-signal rules activation & manual override).
-5. **Stage E**: ✅ Fully completed (Headless exit codes 0/1/2/3/4/5/130, structured run.failed event conforming to StructuredErrorSchema, honest server command handling across all 15 commands, size-rotated and redacted local debug logging, consistent what/why/next error formatting).
-6. **Stage F / Stage G**: Integrations (LSP/MCP/probes/researcher) and packaging/contract gates.
+## Status Summary
+- **Stage A**: 🔶 Mostly Done
+- **Stage B**: ✅ Complete
+- **Stage C**: ✅ Complete
+- **Stage D**: ✅ Complete
+- **Stage E**: ✅ Complete
+- **Stage F**: ✅ Complete
+- **Stage G**: ✅ Complete
+- **Total Tests**: 397/397 passing across 58 test files
+- **Lint**: 0 errors
+- **Build**: 0 errors

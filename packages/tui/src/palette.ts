@@ -1,10 +1,16 @@
 export class Palette {
   public static isNoColor(): boolean {
-    return Boolean(process.env.NO_COLOR || process.env.FLAPPYCODE_PLAIN === '1');
+    if (process.env.NO_COLOR || process.env.FLAPPYCODE_PLAIN === '1') return true;
+    if (process.env.FORCE_COLOR === '1') return false;
+    return process.env.TERM === 'dumb';
   }
 
   public static isAsciiOnly(): boolean {
-    return Boolean(process.env.FLAPPYCODE_ASCII === '1');
+    return Boolean(process.env.FLAPPYCODE_ASCII === '1' || process.env.TERM === 'dumb');
+  }
+
+  public static isNoAnim(): boolean {
+    return Boolean(process.env.FLAPPYCODE_NO_ANIM === '1');
   }
 
   // Hex approximate colors per CLIDesign.md §3.1
