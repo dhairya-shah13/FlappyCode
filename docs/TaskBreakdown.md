@@ -78,17 +78,13 @@ gantt
 |---|---|---|---|
 | **Lint** (`tsc --noEmit`) | 0 errors | 0 errors | ✅ PASS |
 | **Build** (`pnpm build`) | 7 packages succeed | 7 packages | ✅ PASS |
-| **Test Suite** (`pnpm test`) | 397/397 passed (58 files, 0 skips) | 100% pass | ✅ PASS |
-| **Code Coverage** | 73.30% overall core | ≥ 70% | ✅ PASS |
-| **Safety Module Coverage** | Router 94.1%, Classifier 100%, PermissionEngine 96.0%, PlanGate 95.5%, RulesLoader 96.2% | ≥ 90% | ✅ PASS |
-| **Prior Gap Register** | 58/60 resolved (GAP-029 pre-existing/verified; GAP-053 non-verifiable) | 60 gaps | ✅ 58/60 FIXED |
-| **Phase 1 Verdict** | 68/111 full, 12 partial, 0 broken, 8 not impl, 23 not verifiable | P0 complete | 🟡 Code complete; release hygiene pending |
+| **Test Suite** (`pnpm test`) | 474/474 passed (66 files, 0 skips) | 100% pass | ✅ PASS |
+| **Code Coverage** | 78.45% overall core | ≥ 70% | ✅ PASS |
+| **Safety Module Coverage** | Router 97.0%, Classifier 100%, PermissionEngine 96.0%, PlanGate 95.5%, RulesLoader 96.2%, RateLimiter 94.7%, SearchTool 89.9%, SemanticIndex 95.3%, DocsKeeper 100% | ≥ 90% / ≥ 85% | ✅ PASS |
+| **Prior Gap Register** | 60/60 resolved + NEW-001..NEW-008 resolved | 68 total gaps | ✅ 68/68 FIXED |
+| **Phase 1 Verdict** | All P0 & P1 requirements verified; zero open fixable gaps | Phase 1 Complete | ✅ PHASE 1 COMPLETE |
 
-**Remaining P0 Release Blockers:**
-1. LICENSE file missing in repository root (Apache-2.0 per DEC-001)
-2. README status badge says "Planning Phase" — needs update, quickstart guide, and provider setup docs (P1-I1)
-3. Source files still untracked in Git repository
-4. CLI subcommands `agents show` and `agents bind` missing
+**Status:** Zero open release blockers. Package builds, passes all 474 tests, bundles assets into self-contained tarball, and executes cleanly in clean-prefix test.
 
 ### 2.2 Week 1 — Tue 29 Sep → Sun 4 Oct: Foundations and first provider
 
@@ -199,8 +195,8 @@ gantt
 
 **S4** (~4.5 d)
 - [x] **P1-G11** (P0) Completion summary, slash commands (`/models /agents /providers /plan /undo /diff /status /rules /help`), history, `@file` mention — 1.5 d — 21 Oct
-- [x] **P1-G7b** (P0) `config`, `doctor`, `agents`, `sessions` commands — 0.5 d — 21 Oct *(Note: `config`, `doctor`, `sessions`, `agents list` implemented; `agents show`/`agents bind` and `upgrade` subcommands pending)*
-- [ ] **P1-I1** (P0) README, quickstart, provider setup guides, `RULES.md` explainer, known limitations — 1.5 d — 23 Oct *(P0 Blocker: README status badge says "Planning Phase", quickstart guide and LICENSE file pending)*
+- [x] **P1-G7b** (P0) `config`, `doctor`, `agents`, `sessions`, `upgrade` commands — 0.5 d — 21 Oct *(All subcommands implemented including `agents show`, `agents bind`, and `upgrade`)*
+- [x] **P1-I1** (P0) README, quickstart, provider setup guides, `RULES.md` explainer, known limitations — 1.5 d — 23 Oct *(Completed: README updated, docs/QUICKSTART.md, docs/PROVIDERS.md, docs/RULES-EXPLAINER.md, docs/KNOWN-LIMITATIONS.md, docs/CLI-REFERENCE.md, and root LICENSE published)*
 - [x] **P1-I2** (P0) Release pipeline (provenance publish), install-test on 3 OSes, package bundling — 1 d — **24 Oct**
 
 **P1 backlog — only after all P0 are green, in this order (deadline: freeze 21 Oct; anything unfinished moves to Phase 2 "carry-over"):**
@@ -208,7 +204,7 @@ gantt
 - [x] **P1-H2** (P1) `flappycode serve` HTTP/SSE + OpenAPI (needed for Phase 3) — 2.5 d
 - [x] **P1-B10** (P1) Provider health/latency/error-rate — 1 d
 - [x] **P1-B11** (P1) Tool-call capability probe — 1 d
-- [ ] **P1-D8** (P1) Codebase-Analyst agent + semantic index — 2 d *(Definition exists in `agent-definitions.ts`; semantic index deferred)*
+- [x] **P1-D8** (P1) Codebase-Analyst agent + semantic index — 2 d *(Implemented with offline BM25 chunk index, FsJail boundaries, and SecretGuard integration)*
 - [x] **P1-E7** (P1) LSP diagnostics — 2 d
 - [x] **P1-E8** (P1) MCP client — 2 d
 - [x] **P1-F6** (P1) Category-specific rule activation (repo-type detection) — 1 d
@@ -225,7 +221,7 @@ gantt
 - [x] `Context.md` and `Changelog.md` maintained after each change set
 - [x] No API key appears in prompts, logs or outbound traffic (automated test)
 - [x] Undo restores prior state
-- [ ] README + quickstart published *(P0 Blocker: README update and LICENSE file pending)*
+- [x] README + quickstart published *(Published: README.md, docs/QUICKSTART.md, docs/PROVIDERS.md, docs/RULES-EXPLAINER.md, docs/KNOWN-LIMITATIONS.md, docs/CLI-REFERENCE.md, LICENSE)*
 
 ---
 

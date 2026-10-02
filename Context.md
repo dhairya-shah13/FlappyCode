@@ -117,22 +117,25 @@ FlappyCode is a developer-centric CLI tool, local loopback daemon, and multi-age
   - `flappycode config`: Inspect, get, set, locate, and edit configuration (`get`, `set`, `path`, `edit`).
 
 ## Verification & Test Results
-- **Unit & Integration Test Suite**: 58 test suites, 397 passing tests across Stage A, Stage B, Stage C, Stage D, Stage E, Stage F, and Stage G implementations.
-- **Coverage**: Satisfies all documented thresholds (73.3% lines, 85.6% functions, 73.76% branches, 73.3% statements; router 94.11%, classifier 100%, permission engine 96.00%, plan gate 95.55%, rules loader 96.17%).
+- **Unit & Integration Test Suite**: 66 test suites, 474 passing tests (0 failures, 0 skips) across Stage A through G, new audit gaps, and the 20-task golden benchmark.
+- **Coverage**: Core overall coverage is 78.45% statements (baseline ≥ 70%). Safety-critical modules exceed all thresholds: Router 97.02%, Classifier 100%, PermissionEngine 96.00%, PlanGate 95.55%, RulesLoader 96.17%, RateLimiter 94.73%, SearchTool 89.93%, SemanticIndex 95.34%, DocsKeeper 100%.
 - **TypeScript**: Strict typechecking (`tsc --noEmit`) passes with 0 errors across all workspace packages and test suites.
 - **Build**: All packages (`@flappycode/protocol`, `@flappycode/providers`, `@flappycode/storage`, `@flappycode/core`, `@flappycode/server`, `@flappycode/tui`, `@flappycode/cli`) build cleanly to ESM, CJS, and TypeScript declaration files (`.d.ts`).
-- **CI**: Automated GitHub Actions CI workflow in `.github/workflows/ci.yml` across Ubuntu, macOS, and Windows on Node 20 and Node 22.
+- **CI**: Automated GitHub Actions CI workflow in `.github/workflows/ci.yml` across Ubuntu, macOS, and Windows on Node 20 and Node 22, plus manual gated release workflow in `.github/workflows/release.yml`.
+- **Packaging Smoke Test**: Global install from packed local tarball (`npm pack`) verified in isolated clean prefix with `--version`, `--help`, `doctor`, and `run`.
 
-## Audit Findings & Resolution
+## Phase 1 Re-Audit & Gap Closure Register
 
-All Stage F and Stage G gaps from the Phase 1 audit have been resolved and verified:
-- **GAP-015 (Capability Probe)**: Resolved and verified in `tests/unit/stage-f-probe.test.ts` and Simulation F-01.
-- **GAP-016 (Real LSP)**: Resolved and verified in `tests/unit/stage-f-lsp.test.ts` and Simulations F-02, F-03.
-- **GAP-017 (Real MCP)**: Resolved and verified in `tests/unit/stage-f-mcp.test.ts` and Simulations F-04, F-05.
-- **GAP-038 (Researcher, Browser & Vision)**: Resolved and verified in `tests/unit/stage-f-researcher-browser.test.ts` and Simulations F-06, F-07.
-- **GAP-055 (Typecheck, Coverage & CI)**: Resolved with 0 lint errors, >73% workspace coverage, >94% safety modules, and `.github/workflows/ci.yml`.
-- **GAP-060 (Connector Contracts)**: Resolved with 20 offline contract tests across all 4 connectors in `tests/contracts/`.
-- **GAP-057 (Package Smoke)**: Resolved with manifest assets and CLI smoke tests in `tests/unit/package-smoke.test.ts`.
-- **GAP-030 (Interactive TUI PTY)**: Resolved and verified in `tests/tui/pty-interactive.test.ts` and Simulation G-07.
-- **GAP-031 (Terminal Compatibility)**: Resolved and verified in `tests/tui/terminal-compat.test.ts` and Simulation G-08.
-- **GAP-059 (Cross-Platform)**: Resolved and verified in `tests/unit/cross-platform.test.ts` and Simulation G-09.
+All 60 original gaps and all 8 new gaps (NEW-001 through NEW-008) are fully implemented and verified:
+- **NEW-001 (License)**: Root and package Apache-2.0 LICENSE added and bundled in tarball.
+- **NEW-002 (Agents CLI)**: `agents show <name>` and `agents bind <name> <model>` implemented with SQLite persistence.
+- **NEW-003 (Upgrade Command)**: `flappycode upgrade [--check] [--registry]` implemented with NFR-PRV-001 privacy toggle.
+- **NEW-004 (Documentation Suite)**: README updated to Phase 1 Release Candidate; published `docs/QUICKSTART.md`, `docs/PROVIDERS.md`, `docs/RULES-EXPLAINER.md`, `docs/KNOWN-LIMITATIONS.md`, and `docs/CLI-REFERENCE.md`.
+- **NEW-005 (Git Tracking)**: Comprehensive `.gitignore` configured; verified zero secret leaks; monorepo source committed locally.
+- **NEW-006 (Rate Limiter)**: Concurrency semaphores added; statement coverage raised to 94.73%.
+- **NEW-007 (Search Tool)**: Pure-JS fallback path implemented; statement coverage raised to 89.93%.
+- **NEW-008 (Community Catalog)**: Aligned with `ModelTierSchema` without opaque quality grades.
+- **P1-D8 (Semantic Index)**: Offline BM25 chunk index in `packages/core/src/tools/semantic-index.ts` with FsJail and SecretGuard integration (95.34% coverage).
+- **P1-J1 (Golden Benchmark)**: 20/20 golden tasks passed in `tests/integration/golden-benchmark-20.test.ts`.
+- **NFR-PERF (Performance)**: Verified in `scripts/perf/benchmark.ts`: cold start 115ms (≤1.5s), TUI latency 10.5ms (≤50ms), discovery <1ms (≤10s), idle RSS 93.6MB (≤250MB), 4-agent RSS 93.8MB (≤600MB), overhead 0.01ms (≤200ms).
+

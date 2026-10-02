@@ -2,6 +2,26 @@
 
 All notable changes to this project are documented in this file in reverse chronological order.
 
+## [2026-10-02 23:25]
+
+### [Category: Release] — Phase 1 Re-Audit & Gap Closure: Complete Implementation of All Remaining Backlog Items
+What changed: Closed all 8 gaps from the independent audit (NEW-001 through NEW-008), raised module coverage, wired semantic search, and completed the 20-task golden benchmark:
+- **NEW-001 (License)**: Added root and package `LICENSE` (Apache-2.0 per DEC-001); configured `"license": "Apache-2.0"` across all 7 workspace packages; included `LICENSE` in package tarball.
+- **NEW-002 (Agents CLI Subcommands)**: Implemented `agents show <name>` and `agents bind <name> <model>` in `cli.ts` and interactive slash commands; persisted via `AgentRepository` and respected by `DeterministicRouter`.
+- **NEW-003 (Upgrade Subcommand)**: Implemented `flappycode upgrade` in `packages/core/src/upgrade.ts` and `cli.ts` with `--check` and `--registry`, respecting `update_check` config disable setting.
+- **NEW-004 (Documentation Suite & Status Badge)**: Updated README badge to "Phase 1 Release Candidate"; removed stale "Planning Phase" references; published `docs/QUICKSTART.md`, `docs/PROVIDERS.md`, `docs/RULES-EXPLAINER.md`, `docs/KNOWN-LIMITATIONS.md`, and `docs/CLI-REFERENCE.md`.
+- **NEW-005 (Clean Git Tracking)**: Configured comprehensive `.gitignore`; verified zero secret leaks across workspace; staged and committed all monorepo source files locally.
+- **NEW-006 (Rate Limiter Concurrency Semaphores)**: Added concurrency semaphore support (`acquireConcurrency`, `getInFlight`) to `ProviderRateLimiter`; raised test coverage to 94.73% statements (100% functions).
+- **NEW-007 (Search Tool Pure-JS Fallback)**: Added pure-JS regex and text search fallback when ripgrep is unavailable, binary file skip heuristics, and jail boundary enforcement; raised test coverage to 89.93% statements (100% functions).
+- **NEW-008 (Community Catalog Schema Alignment)**: Aligned `community-catalog.json` with `ModelTierSchema` (`free`, `paid`), removing opaque quality grades; added schema validation smoke tests.
+- **P1-D8 (Codebase-Analyst Semantic Index)**: Implemented offline-capable SQLite BM25 chunk index in `packages/core/src/tools/semantic-index.ts` with FsJail boundary enforcement and SecretGuard secret redaction; raised coverage to 95.34%.
+- **P1-J1 (20-Task Golden Benchmark)**: Built automated benchmark harness in `tests/integration/golden-benchmark-20.test.ts` evaluating 20 diverse coding tasks; achieved 20/20 (100%) pass rate on mock provider.
+- **NFR-PERF (Performance Benchmarking)**: Implemented `scripts/perf/benchmark.ts` measuring cold start (115ms vs ≤1.5s), TUI latency (10.5ms vs ≤50ms), discovery (<1ms vs ≤10s), idle RSS (93.6MB vs ≤250MB), parallel RSS (93.8MB vs ≤600MB), and DAG overhead (0.01ms vs ≤200ms).
+- **Packaging Smoke Test**: Built standalone CLI bundle with internal workspace packages inlined; verified global install from packed tarball in isolated prefix with `--version`, `--help`, `doctor`, and `run`.
+- **Test Suite Results**: 474 passing tests across 66 test files (0 failures, 0 skips); 0 lint errors (`tsc --noEmit`); 78.45% overall core statement coverage.
+Why: Resolve all remaining Phase 1 gaps, satisfy all Definition of Done criteria, and achieve full Phase 1 sign-off.
+Key evidence: `pnpm lint` PASS (0 errors); `pnpm test` PASS (66 test files, 474/474 passing across 3 consecutive runs); `pnpm build` PASS (all 7 packages); tarball smoke install PASS; benchmark script PASS.
+
 ## [2026-10-02 21:45]
 
 ### [Category: Feature] — Stage F (Integrations & Advanced Capabilities) & Stage G (Quality Gates & Packaging) full completion

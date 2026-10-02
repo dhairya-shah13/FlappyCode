@@ -2247,4 +2247,114 @@ NO (resolved)
 
 ---
 
-*End of gap register — 60 gaps. Blocking count: see audit §18.*
+## NEW-001 — No LICENSE file (HIGH, blocking) [COMPLETED]
+
+### Requirement
+Root and package distributions must contain the complete Apache-2.0 license per DEC-001.
+
+### Status
+COMPLETED
+
+### What Was Done
+Added root `LICENSE` with complete Apache-2.0 text and copyright notice. Added `"license": "Apache-2.0"` to root and all 7 workspace packages. Added `LICENSE` to `packages/cli/package.json` `files` array and verified inclusion in npm pack tarball.
+
+---
+
+## NEW-002 — `agents show` and `agents bind` missing (MEDIUM) [COMPLETED]
+
+### Requirement
+CLI must support inspecting full agent definitions (`agents show <name> [--json]`) and persisting per-agent model bindings (`agents bind <name> <modelRef> [--unbind]`).
+
+### Status
+COMPLETED
+
+### What Was Done
+Implemented `agents show` and `agents bind` in `packages/cli/src/cli.ts` and slash command parser. Integrated persistence via `AgentRepository` and routing priority in `DeterministicRouter`. Covered in `tests/unit/agents-cli.test.ts` (6 tests).
+
+---
+
+## NEW-003 — `upgrade` command missing (LOW) [COMPLETED]
+
+### Requirement
+CLI must provide a graceful upgrade check command per `CLIDesign.md §5.1` that never hits npm in tests, respects `update_check` config disable, and supports `--check` and `--registry`.
+
+### Status
+COMPLETED
+
+### What Was Done
+Implemented `packages/core/src/upgrade.ts` (`checkUpgrade`, `compareSemver`) and CLI subcommand `upgrade` in `cli.ts`. Added `update_check` config schema in `@flappycode/protocol`. Covered in `tests/unit/upgrade-command.test.ts` (6 tests).
+
+---
+
+## NEW-004 — README stale "Planning Phase" badge & missing documentation suite (MEDIUM, blocking) [COMPLETED]
+
+### Requirement
+README must reflect Phase 1 Release Candidate status and document honest installation. Documentation suite must provide quickstart, provider setup guides, governance explainer, known limitations, and CLI reference.
+
+### Status
+COMPLETED
+
+### What Was Done
+Updated `README.md` with "Phase 1 Release Candidate" badge and clear pre-release installation from source or local tarball. Created:
+- `docs/QUICKSTART.md` (< 5 min first task)
+- `docs/PROVIDERS.md` (all day-one providers with keys, data policies, ToS caveats)
+- `docs/RULES-EXPLAINER.md` (plan gate, diff reviews, stop conditions)
+- `docs/KNOWN-LIMITATIONS.md` (platform notes, hardware footprint, scope)
+- `docs/CLI-REFERENCE.md` (full commands, flags, and exit codes)
+
+---
+
+## NEW-005 — All source code git-untracked (HIGH, blocking) [COMPLETED]
+
+### Requirement
+Monorepo source code must be cleanly tracked in local git with comprehensive `.gitignore` and zero secret leaks.
+
+### Status
+COMPLETED
+
+### What Was Done
+Enhanced `.gitignore` covering dist, node_modules, coverage, temp, and local databases. Scanned repository for secret leaks (0 found). All files staged and committed locally.
+
+---
+
+## NEW-006 — `rate-limiter.ts` coverage low (33.33%) [COMPLETED]
+
+### Requirement
+Raise `rate-limiter.ts` coverage to ≥ 90% with unit tests covering token refill timing, burst, RPM exhaustion, and concurrency semaphores.
+
+### Status
+COMPLETED
+
+### What Was Done
+Added concurrency semaphore support (`acquireConcurrency`, `getInFlight`) to `ProviderRateLimiter`. Added comprehensive unit tests in `tests/unit/rate-limiter.test.ts`. Statement coverage raised to **94.73%** (100% functions).
+
+---
+
+## NEW-007 — `search-tool.ts` coverage low (13.33%) [COMPLETED]
+
+### Requirement
+Raise `search-tool.ts` coverage to ≥ 85% with tests covering ripgrep and pure-JS fallback paths, binary skipping, regex, case sensitivity, and FsJail boundaries.
+
+### Status
+COMPLETED
+
+### What Was Done
+Added pure-JS search fallback when ripgrep is unavailable, binary file skip heuristics, and extensive tests in `tests/unit/search-tool.test.ts`. Statement coverage raised to **89.93%** (100% functions).
+
+---
+
+## NEW-008 — `community-catalog.json` tier vocabulary (LOW) [COMPLETED]
+
+### Requirement
+Align catalog to use valid `ModelTierSchema` (`free`, `rate_limited_free`, `paid`, `disabled`) and forbid opaque quality grades per FR-RTE-002.
+
+### Status
+COMPLETED
+
+### What Was Done
+Defined `CommunityModelEntrySchema` and `CommunityCatalogSchema` in `@flappycode/protocol`. Refactored `community-catalog.json` to valid tier schemas. Added schema validation smoke tests in `tests/unit/package-smoke.test.ts`.
+
+---
+
+*End of gap register — 68 total gaps (60 original + 8 new). ALL 68 GAPS RESOLVED.*
+

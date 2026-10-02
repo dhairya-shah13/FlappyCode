@@ -2,16 +2,16 @@
 
 > **Your connected providers. All the free models. One powerful coding agent.**
 
-[![Project Status: Planning](https://img.shields.io/badge/Status-Planning_Phase-f59e0b?style=for-the-badge&logo=target)](docs/TaskBreakdown.md)
+[![Project Status: Phase 1 RC](https://img.shields.io/badge/Status-Phase_1_Release_Candidate-22c55e?style=for-the-badge&logo=target)](docs/TaskBreakdown.md)
 [![Dev Kickoff](https://img.shields.io/badge/Dev_Kickoff-1_October_2026-3b82f6?style=for-the-badge&logo=calendar)](docs/TaskBreakdown.md)
 [![Node Version](https://img.shields.io/badge/Node.js-≥_20_LTS-22c55e?style=for-the-badge&logo=node.js)](docs/SRS.md)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178c6?style=for-the-badge&logo=typescript)](docs/SystemArchitecture.md)
-[![License](https://img.shields.io/badge/License-Apache_2.0_%2F_MIT-purple?style=for-the-badge)](docs/PRD.md)
+[![License](https://img.shields.io/badge/License-Apache_2.0-purple?style=for-the-badge)](LICENSE)
 
 ---
 
 > [!NOTE]  
-> **Development Notice:** FlappyCode is under active Phase 1 development (Week 1: foundations & core). **It is not yet published to npm.** The package name `flappycode` will be published following Phase 1 completion.
+> **Pre-Release Notice:** FlappyCode Phase 1 is a Release Candidate undergoing internal dogfooding and testing. **It is not yet published to npm.** npm publication will follow after internal team testing and approval. See [Installation](#-installation) below for building from source or installing from a local tarball.
 
 ---
 
@@ -47,7 +47,7 @@
 - [Master Timeline & Milestones](#-master-timeline--milestones)
 - [System Architecture](#-system-architecture)
 - [CLI & Terminal Experience](#-cli--terminal-experience)
-- [Planned Usage](#-planned-usage)
+- [Installation & Usage](#-installation--usage)
 - [Repository Structure](#-repository-structure)
 - [Documentation Index](#-documentation-index)
 - [Contributing & Development Setup](#-contributing--development-setup)
@@ -249,14 +249,40 @@ PS C:\FlappyCode> flappycode
 
 ---
 
-## 🚀 Planned Usage
+## 🚀 Installation & Usage
 
-*(Target release: Phase 1 RC — late October 2026)*
+> [!IMPORTANT]
+> **Pre-Release Notice:** The package is **not yet published on public npm**. npm publication will follow after internal team dogfooding and approval. To use FlappyCode today, install from source or from a local packed tarball.
 
-### Global Installation
+### Option A: Install from Source (Recommended for Contributors)
 ```bash
-npm install -g flappycode
+# Clone the repository
+git clone https://github.com/dhairya-shah13/FlappyCode.git
+cd FlappyCode
+
+# Install dependencies and build all packages
+pnpm install
+pnpm build
+
+# Link CLI globally
+pnpm --filter @flappycode/cli link --global
 ```
+
+### Option B: Install from Packed Tarball
+```bash
+# Pack the CLI package into a tarball
+cd packages/cli
+npm pack
+# Install globally from the resulting tarball
+npm install -g ./flappycode-0.1.0.tgz
+```
+
+### Quick Guides
+- 🚀 [**Quickstart Guide (docs/QUICKSTART.md)**](docs/QUICKSTART.md) — First run, connect providers, first coding task under 5 minutes.
+- 🔌 [**Provider Setup Guide (docs/PROVIDERS.md)**](docs/PROVIDERS.md) — Day-one provider credentials, local Ollama/LM Studio setup, and data policies.
+- 🛡️ [**Governance Explainer (docs/RULES-EXPLAINER.md)**](docs/RULES-EXPLAINER.md) — Deep dive into `RULES.md`, plan gates, diff approvals, and stop conditions.
+- ⚠️ [**Known Limitations (docs/KNOWN-LIMITATIONS.md)**](docs/KNOWN-LIMITATIONS.md) — Phase 1 scope limits, benchmark performance, and platform notes.
+- 📖 [**CLI Reference (docs/CLI-REFERENCE.md)**](docs/CLI-REFERENCE.md) — Full flags, subcommands, and exit codes.
 
 ### Launch Interactive Assistant
 ```bash
