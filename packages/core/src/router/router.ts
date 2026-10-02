@@ -44,8 +44,10 @@ export class DeterministicRouter {
     pinnedModelId?: string,
     pinnedFallbackPolicy: 'ask_user' | 'next_best_fit' | 'abort' = 'ask_user'
   ): RoutingResult {
-    // 0. Pinned agent binding wins if provided
-    if (pinnedModelId && pinnedModelId !== 'flappyauto') {
+    const isAutoPolicy = !pinnedModelId || pinnedModelId === 'flappyauto' || pinnedModelId.startsWith('auto:');
+
+    // 0. Pinned agent binding wins if provided (and not an auto policy)
+    if (!isAutoPolicy && pinnedModelId) {
       const candidates = this.registry.getModels();
       const pinned = candidates.find((m) => m.model_id === pinnedModelId);
       if (pinned && this.registry.isAvailable(pinned)) {
@@ -60,6 +62,7 @@ export class DeterministicRouter {
           score: 9999,
         };
       }
+
 
       // GAP-044 / FR-RTE-004: pinned model unavailable -> follow fallbackPolicy.
       // Default is ask_user: never silently re-route away from an explicit pin.
@@ -128,11 +131,17 @@ export class DeterministicRouter {
     }
 
     // 3. Score and rank candidates
+    const isFreeFast = pinnedModelId === 'auto:free-fast';
     const scored = candidates.map((m) => {
       const liveState = this.registry.getLiveState(m.provider_id, m.model_id);
-      const score = scoreModel(m, req, liveState, coderModelId);
+      let score = scoreModel(m, req, liveState, coderModelId);
+      if (isFreeFast) {
+        const latencyBonus = Math.max(0, 2000 - (m.avg_latency_ms || 200));
+        score += latencyBonus * 2;
+      }
       return { model: m, score };
     });
+
 
     scored.sort((a, b) => b.score - a.score);
 

@@ -1,8 +1,8 @@
 export class SecretGuard {
   private knownSecrets: Set<string> = new Set();
   private static SECRET_PATTERNS = [
-    /\b(sk-[a-zA-Z0-9]{20,})\b/g, // OpenAI key
-    /\b(gsk_[a-zA-Z0-9]{20,})\b/g, // Groq key
+    /\b(sk-[a-zA-Z0-9_-]{20,})\b/g, // OpenAI / Anthropic key
+    /\b(gsk_[a-zA-Z0-9_-]{20,})\b/g, // Groq key
     /\b(AIzaSy[a-zA-Z0-9_-]{33})\b/g, // Google API key
     /\b(xox[baprs]-[0-9a-zA-Z]{10,48})\b/g, // Slack token
     /\b(ghp_[a-zA-Z0-9]{36})\b/g, // GitHub PAT

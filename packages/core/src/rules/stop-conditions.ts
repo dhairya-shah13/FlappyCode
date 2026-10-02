@@ -104,14 +104,20 @@ export class StopConditions {
     return { shouldStop: false };
   }
 
-  public static checkRuleConflicts(conflicts: string[]): StopConditionCheck {
+  public static checkRuleConflicts(
+    conflicts: Array<string | import('./rules-loader.js').RuleConflict>
+  ): StopConditionCheck {
     if (conflicts && conflicts.length > 0) {
+      const msgs = conflicts.map((c) =>
+        typeof c === 'string' ? c : `${c.ruleA} vs ${c.ruleB}: ${c.description}`
+      );
       return {
         shouldStop: true,
         kind: 'rule_conflict',
-        reason: `Unresolvable rule conflicts detected: ${conflicts.join('; ')}. Requires user resolution.`,
+        reason: `Unresolvable rule conflicts detected: ${msgs.join('; ')}. Requires user resolution.`,
       };
     }
     return { shouldStop: false };
   }
 }
+

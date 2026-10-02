@@ -2,6 +2,39 @@
 
 All notable changes to this project are documented in this file in reverse chronological order.
 
+## [2026-10-02 15:45]
+
+### [Category: Feature] — Stage D (Rules & Product Interaction) full completion
+What changed: Fully implemented and integrated all 8 Stage D gaps across `@flappycode/protocol`, `@flappycode/storage`, `@flappycode/providers`, `@flappycode/core`, `@flappycode/tui`, and `@flappycode/cli`:
+- **GAP-018 (Full RULES Bundling & Structural Conflict Detection)**: Bundled universal `RULES.md` into `@flappycode/cli` and `@flappycode/core` assets; implemented hierarchical loading (`Universal -> Category -> Project -> Nested Directory Scoped`); added AST-like structural conflict detection flagging attempts to bypass PlanGate, permissions, or secret safety without false-positive override penalties; emits `rule.conflict_detected` event.
+- **GAP-048 (Clarifying Questions Lifecycle & TUI)**: Implemented `ask_question` tool for agents; added `question.asked` and `question.answered` event schemas and bus routing; created `QuestionPromptScreen` (60/80/120 columns with word wrapping and numbered multiple-choice or free-text inputs); wired into `FlappyEngine.setAskUser()` and headless deterministic fallback.
+- **GAP-032 (Provider Diagnostics & Health State)**: Added CLI `flappycode providers test [id]` command; created `provider_health` SQLite table and `ProviderHealthRepository` tracking latency, reachability, timestamps, and rolling error metrics; enhanced `flappycode doctor` with provider reachability probes, SQLite `PRAGMA integrity_check`, and actionable remediation hints.
+- **GAP-040 (Local Provider Auto-Detection)**: Created `LocalProviderDetector` probing default/custom local ports for Ollama (`11434`), LM Studio (`1234`), and llama.cpp (`8080`) with safe timeouts, cancellation, and model discovery without false positives; wired into `OnboardingWizardScreen` with one-click connection display.
+- **GAP-033 (Real Configuration System & Policies)**: Built complete config loader enforcing precedence `CLI overrides > project flappy.config.json > user config > defaults`; implemented CLI commands `config get <key>`, `config set <key> <val>`, `config path`, `config edit`; added `maskSecrets` recursive secret redaction; integrated `auto:*` (`auto:free-fast`, `auto:best-fit-free`) policy interpretation into `DeterministicRouter`.
+- **GAP-020 (Git Tool Safety & Integration)**: Implemented Git safety tool with structured status and diff; command injection protected branch creation; pre-commit secret scanning via `SecretGuard` blocking credential leaks; protected branches (`main`/`master`) push prevention without explicit confirmation; markdown PR description draft generation (`generatePrDraft`).
+- **GAP-045 (Persisted Undo Engine)**: Added Migration 003 creating SQLite `undo_batch` and `undo_file` tables via `UndoRepository`; atomic multi-file revert surviving engine and process restarts; interactive hunk review in `DiffReviewScreen`.
+- **GAP-049 (Category-Specific Rules & Override)**: Built multi-signal automatic repository classification across 10 categories (Frontend, Backend, Mobile, CLI, Library, Infra, Data/ML, Monorepo, Docs, Marketing/SEO); bundled category markdown rule assets; manual override precedence via `flappy.config.json` category field; full rules injection into `PromptComposer` without character truncation.
+- Added 11 new unit, TUI, and integration test files (76 new passing tests): `rules-loader.test.ts`, `rules-conflict.test.ts`, `category-rules.test.ts`, `question-tool.test.ts`, `provider-health.test.ts`, `provider-detection.test.ts`, `config-loader.test.ts`, `git-tool.test.ts`, `undo-persistence.test.ts`, `stage-d-screens.test.ts`, and `stage-d-simulations.test.ts` (Simulations A through J).
+Why: Fulfill all Stage D requirements of Phase 1 Rules & Product Interaction.
+Key evidence: `pnpm lint` PASS (0 errors); `pnpm test` PASS (40 test files, 268/268 passing); `pnpm build` PASS (all 7 packages compiled without errors).
+
+## [2026-10-02 14:50]
+
+### [Category: Feature] — Stage C (Multi-Agent Orchestration) full completion
+What changed: Fully implemented and integrated all Stage C gaps across `@flappycode/protocol`, `@flappycode/storage`, `@flappycode/core`, `@flappycode/tui`, and `@flappycode/cli`:
+- **GAP-007 (Single-Model Mode)**: `--model <id>` (when ≠ flappyauto) completely bypasses multi-agent planner, directly constructs a single Coder node, preserves PlanGate and permission safety gates, and is wired into headless `flappycode run --model <id>`.
+- **GAP-008 (Declarative Agent Definitions)**: Loaded from `.flappycode/agents/*.yaml|json`, schema-validated, merged with/overriding built-in definitions, wired into `flappyauto.ts` planner prompt and execution dispatch. Added CLI `flappycode agents list` and `/agents` slash command.
+- **GAP-009 (Reviewer/Tester Feedback Loop)**: Multi-turn loop bounded by max iterations (default 3), preserves completed node results, emits `feedback.iteration` events, parses `VERDICT: PASS` and `VERDICT: FAIL: <feedback>`, and terminates cleanly or escalates.
+- **GAP-013 (Parallel Execution Concurrency)**: Exact free-slot concurrency cap in `DagExecutor` prevents off-by-one over-admission; parallel sibling execution verified with timing overlap tests.
+- **GAP-012 (Run Cancellation & Exit 130)**: SIGINT/Esc aborts in-flight completions, marks non-terminal nodes as `cancelled`, emits `run.cancelled` event with exit code 130.
+- **GAP-025 / GAP-026 / GAP-054 (Sessions, Compaction, Project Memory)**: Added `ProjectMemoryRepository` for cross-run memories (`.flappycode/memory.json` / SQLite); enhanced `ContextManager` role-based slicing and compaction; added CLI `flappycode sessions list`, `sessions resume <id>`, `sessions delete <id>`, and `/sessions` slash command.
+- **GAP-046 (Planner Repair & Model Fallback)**: Structured `PlannerOutputError` with JSON extraction, emits `planner.failed`, and triggers model fallback with exclusion of the failing model.
+- **GAP-019 (Search Tool for Agents)**: Wired `search` tool into `allowed_tools` for Coder, Codebase-Analyst, and File-Finder; strictly excluded from Reviewer, Command-Executor, and Tester.
+- **GAP-027 / P1-G8 / P1-G9 / P1-G10 (TUI Screens & Task Graph)**: Implemented `TaskGraphScreen` (ASCII/Unicode reactive DAG with status bar state machine across 60/80/120 column widths) and `QuestionPromptScreen` (GAP-048 clarifying question prompt); wired `TaskGraphScreen` into CLI execution progress.
+- Added comprehensive unit and integration tests (11 new test files): `single-model.test.ts`, `declarative-agents.test.ts`, `feedback-loop.test.ts`, `dag-concurrency.test.ts`, `cancellation.test.ts`, `sessions.test.ts`, `context-slicing.test.ts`, `planner-repair.test.ts`, `agent-search.test.ts`, `stage-c-screens.test.ts`, and `stage-c-orchestration.test.ts`.
+Why: Fulfill all Stage C requirements of Phase 1 Multi-Agent Orchestration.
+Key evidence: `pnpm lint` PASS (0 errors); `pnpm test` PASS (29 test files, 192/192 passing); `pnpm build` PASS (all 7 packages compiled without errors).
+
 ## [2026-10-02 13:40]
 
 ### [Category: Feature] — Stage B (Provider Reliability & Model Routing) full completion

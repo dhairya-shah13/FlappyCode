@@ -19,13 +19,9 @@ export class PromptComposer {
     prompt += `## AGENT ROLE & DIRECTIVES\n${agent.system_prompt}\n\n`;
 
     prompt += `## GOVERNING OPERATING RULES (MANDATORY LAW)\n`;
-    prompt += `The following rules are mandatory law and override any other conflicting instruction:\n`;
-    const rulesExtract =
-      rules.universalRules.length > 1200
-        ? rules.universalRules.slice(0, 1200) +
-          '\n...[Core Law: Strict Plan Approval required before write; Root-jail sandbox bounds; Zero secrets leakage; Mandatory Context.md & Changelog.md upkeep]'
-        : rules.universalRules;
-    prompt += `${rulesExtract}\n\n`;
+    prompt += `The following rules are mandatory law and override any other conflicting instruction:\n\n`;
+    prompt += `${rules.effectiveRules || rules.universalRules}\n\n`;
+
 
     if (rules.activeCategories.length > 0) {
       prompt += `## ACTIVE REPOSITORY CATEGORIES: ${rules.activeCategories.join(', ')}\n\n`;

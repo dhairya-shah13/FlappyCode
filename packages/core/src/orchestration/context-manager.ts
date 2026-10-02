@@ -1,4 +1,5 @@
 import { ChatMessage } from '@flappycode/providers';
+import { ProjectMemoryRepository } from '@flappycode/storage';
 
 export interface AgentContextSlice {
   goal: string;
@@ -7,15 +8,137 @@ export interface AgentContextSlice {
   compacted: boolean;
 }
 
+/**
+ * Role-specific context slice builder (GAP-026).
+ * Each agent type receives only the context it needs.
+ */
+export type AgentRole = 'File-Finder' | 'Coder' | 'Tester' | 'Reviewer' | 'Command-Executor' | 'Codebase-Analyst';
+
+export interface AgentSliceInput {
+  goal: string;
+  history: ChatMessage[];
+  relevantFiles?: Array<{ path: string; content: string }>;
+  directoryTree?: string[];
+  searchContext?: string;
+  plan?: string;
+  feedbackHistory?: string;
+  testFailures?: string;
+  changedFiles?: string[];
+  testCommands?: string[];
+  previousTestOutput?: string;
+  unifiedDiff?: string;
+  codingRules?: string;
+  testerVerdict?: string;
+  modelContextLength?: number;
+}
+
 export class ContextManager {
-  private projectMemory = new Map<string, string>(); // key -> value
+  private inMemoryStore = new Map<string, string>(); // key -> value
+  private projectMemoryRepo?: ProjectMemoryRepository;
+  private projectPath?: string;
+
+  /** Wire the SQLite-backed project memory (called once during engine setup). */
+  public initProjectMemory(repo: ProjectMemoryRepository, projectPath: string): void {
+    this.projectMemoryRepo = repo;
+    this.projectPath = projectPath;
+  }
 
   public setMemory(key: string, value: string): void {
-    this.projectMemory.set(key, value);
+    this.inMemoryStore.set(key, value);
+    if (this.projectMemoryRepo && this.projectPath) {
+      try {
+        this.projectMemoryRepo.set(this.projectPath, key, value);
+      } catch { /* persistence must not block orchestration */ }
+    }
   }
 
   public getMemory(key: string): string | undefined {
-    return this.projectMemory.get(key);
+    const inMem = this.inMemoryStore.get(key);
+    if (inMem !== undefined) return inMem;
+    if (this.projectMemoryRepo && this.projectPath) {
+      try {
+        const persisted = this.projectMemoryRepo.get(this.projectPath, key);
+        if (persisted !== undefined) {
+          this.inMemoryStore.set(key, persisted); // warm cache
+        }
+        return persisted;
+      } catch { /* non-fatal */ }
+    }
+    return undefined;
+  }
+
+  /**
+   * Build a role-specific context slice (GAP-026 FR-CTX-002).
+   * Each agent role receives a focused, token-efficient context subset.
+   */
+  public buildAgentSlice(role: AgentRole, input: AgentSliceInput): AgentContextSlice {
+    const contextMessages: ChatMessage[] = [];
+
+    switch (role) {
+      case 'File-Finder':
+        contextMessages.push({
+          role: 'system',
+          content: [
+            `Task goal: ${input.goal}`,
+            input.directoryTree ? `Directory tree:\n${input.directoryTree.slice(0, 50).join('\n')}` : '',
+            input.searchContext ? `Search context: ${input.searchContext}` : '',
+          ].filter(Boolean).join('\n\n'),
+        });
+        break;
+
+      case 'Coder':
+        contextMessages.push({
+          role: 'system',
+          content: [
+            `Task goal: ${input.goal}`,
+            input.plan ? `Approved plan:\n${input.plan}` : '',
+            input.feedbackHistory ? `Previous feedback:\n${input.feedbackHistory}` : '',
+            input.testFailures ? `Test failures to fix:\n${input.testFailures}` : '',
+          ].filter(Boolean).join('\n\n'),
+        });
+        break;
+
+      case 'Tester':
+        contextMessages.push({
+          role: 'system',
+          content: [
+            `Task goal: ${input.goal}`,
+            input.changedFiles ? `Changed files: ${input.changedFiles.join(', ')}` : '',
+            input.testCommands ? `Test commands: ${input.testCommands.join(', ')}` : '',
+            input.previousTestOutput ? `Previous output:\n${input.previousTestOutput}` : '',
+          ].filter(Boolean).join('\n\n'),
+        });
+        break;
+
+      case 'Reviewer':
+        contextMessages.push({
+          role: 'system',
+          content: [
+            `Task goal: ${input.goal}`,
+            input.unifiedDiff ? `Unified diff:\n${input.unifiedDiff}` : '',
+            input.codingRules ? `Coding rules:\n${input.codingRules}` : '',
+            input.testerVerdict ? `Tester verdict: ${input.testerVerdict}` : '',
+          ].filter(Boolean).join('\n\n'),
+        });
+        break;
+
+      default:
+        contextMessages.push({
+          role: 'system',
+          content: `Task goal: ${input.goal}`,
+        });
+        break;
+    }
+
+    // Append the full conversation history after the context-specific system message
+    contextMessages.push(...input.history);
+
+    return this.buildContextSlice(
+      input.goal,
+      contextMessages,
+      input.relevantFiles,
+      input.modelContextLength
+    );
   }
 
   public buildContextSlice(

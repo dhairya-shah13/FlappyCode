@@ -8,7 +8,12 @@
   },
   "main": "dist/cli.js",
   "types": "dist/cli.d.ts",
+  "files": [
+    "dist",
+    "assets"
+  ],
   "scripts": {
+
     "build": "tsup src/cli.ts --format esm",
     "clean": "rimraf dist"
   },

@@ -10,6 +10,8 @@ export * from './ollama.js';
 export * from './anthropic.js';
 export * from './google.js';
 export * from './mock.js';
+export * from './detector.js';
+
 
 export function loadCommunityModelsSnapshot(): Record<string, any> {
   try {

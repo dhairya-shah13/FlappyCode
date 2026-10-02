@@ -15,6 +15,10 @@ export class PlanGate {
     return token;
   }
 
+  public getToken(runId: string): PlanToken | undefined {
+    return this.activeTokens.get(runId);
+  }
+
   public createToken(
     runId: string,
     plan: { files_to_modify?: string[]; files_to_create?: string[] },

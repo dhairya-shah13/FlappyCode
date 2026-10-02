@@ -124,7 +124,42 @@ export const MIGRATION_002 = `
 ALTER TABLE task_node ADD COLUMN iterations INTEGER NOT NULL DEFAULT 0;
 `;
 
+export const MIGRATION_003 = `
+CREATE TABLE IF NOT EXISTS provider_health (
+  provider_id TEXT PRIMARY KEY,
+  status TEXT NOT NULL CHECK(status IN ('healthy', 'degraded', 'unreachable', 'unknown', 'auth_failed', 'rate_limited')),
+  latency_ms INTEGER NOT NULL DEFAULT 0,
+  error_count INTEGER NOT NULL DEFAULT 0,
+  total_checks INTEGER NOT NULL DEFAULT 0,
+  last_checked_at INTEGER NOT NULL,
+  last_success_at INTEGER,
+  last_error TEXT,
+  FOREIGN KEY(provider_id) REFERENCES provider(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS undo_batch (
+  id TEXT PRIMARY KEY,
+  session_id TEXT,
+  description TEXT NOT NULL,
+  applied_at INTEGER NOT NULL,
+  reverted_at INTEGER,
+  git_commit_sha TEXT
+);
+
+CREATE TABLE IF NOT EXISTS undo_file (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  batch_id TEXT NOT NULL,
+  file_path TEXT NOT NULL,
+  original_content TEXT,
+  new_content TEXT,
+  hunks_applied TEXT,
+  FOREIGN KEY(batch_id) REFERENCES undo_batch(id) ON DELETE CASCADE
+);
+`;
+
 export const MIGRATIONS = [
   { version: 1, sql: MIGRATION_001 },
   { version: 2, sql: MIGRATION_002 },
+  { version: 3, sql: MIGRATION_003 },
 ];
+

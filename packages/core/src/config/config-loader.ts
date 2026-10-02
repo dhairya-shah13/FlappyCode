@@ -173,3 +173,23 @@ export function writeConfigFile(filePath: string, config: FlappyConfig): void {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, JSON.stringify(config, null, 2) + '\n', 'utf8');
 }
+
+/** Recursively mask API keys, tokens, and secrets for safe display. */
+export function maskSecrets(obj: any): any {
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj === 'string') return obj;
+  if (Array.isArray(obj)) return obj.map(maskSecrets);
+  if (typeof obj === 'object') {
+    const masked: Record<string, any> = {};
+    for (const [k, v] of Object.entries(obj)) {
+      if (/key|secret|token|password|auth_ref/i.test(k) && typeof v === 'string' && v.length > 0) {
+        masked[k] = v.startsWith('env:') ? v : `${v.slice(0, 3)}***${v.length > 6 ? v.slice(-3) : ''}`;
+      } else {
+        masked[k] = maskSecrets(v);
+      }
+    }
+    return masked;
+  }
+  return obj;
+}
+

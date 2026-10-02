@@ -43,9 +43,11 @@ export class DagExecutor {
     // Preserve already-completed nodes so a resumed/feedback re-run only
     // executes pending work (session resume + feedback loop).
     for (const n of graph.nodes) {
-      const status = n.status === 'completed' ? 'completed' : 'pending';
-      nodesMap.set(n.id, { ...n, status });
-      if (status === 'completed') {
+      if (n.status !== 'completed') {
+        n.status = 'pending';
+      }
+      nodesMap.set(n.id, n);
+      if (n.status === 'completed') {
         completed.add(n.id);
       }
     }
@@ -157,7 +159,7 @@ export class DagExecutor {
     }
 
     // On cancellation, no node may remain in a non-terminal state.
-    if (this.isCancelled) {
+    if (this.isCancelled || (this.fatalError as any)?.name === 'RunCancelledError') {
       for (const node of nodesMap.values()) {
         if (node.status === 'pending' || node.status === 'running') {
           node.status = 'cancelled';

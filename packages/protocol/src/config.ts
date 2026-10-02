@@ -103,5 +103,14 @@ export const FlappyConfigSchema = z.object({
     timeout_ms: 60000,
     output_max_bytes: 200000,
   }),
+  category: z.string().optional(),
+  git: z
+    .object({
+      protected_branches: z.array(z.string()).default(['main', 'master']),
+    })
+    .default({
+      protected_branches: ['main', 'master'],
+    }),
 });
 export type FlappyConfig = z.infer<typeof FlappyConfigSchema>;
+

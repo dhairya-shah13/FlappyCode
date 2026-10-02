@@ -34,6 +34,7 @@ import { PermissionEngine } from '../tools/permission-engine.js';
 import { StopConditions } from '../rules/stop-conditions.js';
 import {
   AuditRepository,
+  ProjectMemoryRepository,
   ProviderRepository,
   SecretStore,
   SessionRepository,
@@ -81,6 +82,7 @@ export interface FlappyAutoOptions {
   auditRepo?: AuditRepository;
   taskRepo?: TaskRepository;
   sessionRepo?: SessionRepository;
+  projectMemoryRepo?: ProjectMemoryRepository;
   /** File-backed/custom agent definitions (GAP-008). */
   customAgents?: Record<string, AgentDefinition>;
   /** Per-agent model bindings (GAP-007 `agents bind`). */
@@ -106,7 +108,7 @@ interface FeedbackEntry {
 }
 
 export class FlappyAutoOrchestrator {
-  private contextManager = new ContextManager();
+  public readonly contextManager = new ContextManager();
   private pendingPlan: PlanProposal | null = null;
   private pendingDiffs: FileDiff[] = [];
   private stagedChanges = new Map<string, string>(); // path -> newContent
@@ -164,6 +166,10 @@ export class FlappyAutoOrchestrator {
         return answer === 'next_best_fit' ? ('next_best_fit' as const) : ('cancel' as const);
       },
     });
+    // GAP-026: wire SQLite-backed project memory if available.
+    if (opts.projectMemoryRepo) {
+      this.contextManager.initProjectMemory(opts.projectMemoryRepo, opts.projectRoot);
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -199,6 +205,14 @@ export class FlappyAutoOrchestrator {
         (answer) => this.answerQuestion(questionId, answer),
         () => this.answerQuestion(questionId, options[options.length - 1] ?? 'cancel')
       );
+    } else {
+      // Headless / non-interactive deterministic fallback (FR-ASK-004)
+      const defaultAnswer = options[0] || 'cancel';
+      setTimeout(() => {
+        if (this.pendingQuestions.has(questionId)) {
+          this.answerQuestion(questionId, defaultAnswer);
+        }
+      }, 50);
     }
 
     return pending;
@@ -209,6 +223,15 @@ export class FlappyAutoOrchestrator {
     if (!pending) return false;
     this.pendingQuestions.delete(questionId);
     pending.resolve(answer);
+
+    this.opts.eventBus.emit({
+      type: 'question.answered',
+      question_id: questionId,
+      run_id: pending.request.runId,
+      answer,
+      timestamp: Date.now(),
+    });
+
     if (this.activeSessionId && this.opts.sessionRepo) {
       try {
         this.opts.sessionRepo.addMessage(this.activeSessionId, 'user', `Answer to "${pending.request.question}": ${answer}`);
@@ -218,6 +241,7 @@ export class FlappyAutoOrchestrator {
     }
     return true;
   }
+
 
   public hasPendingQuestion(questionId: string): boolean {
     return this.pendingQuestions.has(questionId);
@@ -289,7 +313,67 @@ export class FlappyAutoOrchestrator {
 
     const singleModel = opts.model && opts.model !== 'flappyauto' ? opts.model : undefined;
     const rules = this.opts.rulesLoader.loadRules();
+
+    if (rules.conflicts.length > 0) {
+      this.opts.eventBus.emit({
+        type: 'rule.conflict_detected',
+        conflicts: rules.conflicts,
+        timestamp: Date.now(),
+      });
+    }
     const projectFiles = this.opts.fsJail.listFiles('.', true);
+    const availableAgents = this.listAgents();
+
+    // GAP-007: single-model mode bypasses the planner entirely —
+    // construct a single Coder node directly without LLM planning.
+    if (singleModel) {
+      const plan: PlanProposal = {
+        run_id: runId,
+        goal: prompt,
+        graph: {
+          id: `graph_${Date.now()}`,
+          goal: prompt,
+          nodes: [
+            {
+              id: 'node-1',
+              agent: 'Coder',
+              description: prompt,
+              depends_on: [],
+              status: 'pending',
+              substitutions: [],
+              tool_calls: [],
+              iterations: 0,
+            },
+          ],
+          created_at: Date.now(),
+        },
+        files_to_modify: [],
+        assumptions: [],
+        risks: [],
+        planner_model: singleModel,
+        timestamp: Date.now(),
+      };
+
+      if (this.opts.taskRepo && this.activeSessionId) {
+        try {
+          this.opts.taskRepo.createTaskRun(runId, this.activeSessionId, prompt, 'created');
+        } catch { /* run row optional */ }
+      }
+
+      this.pendingPlan = plan;
+      this.opts.eventBus.emit({ type: 'plan.proposed', plan, timestamp: Date.now() });
+      this.opts.eventBus.emit({
+        type: 'approval.requested',
+        approval_id: `appr_plan_${runId}`,
+        run_id: runId,
+        kind: 'plan',
+        title: 'Implementation Plan Approval',
+        description: `Single-model mode: "${plan.goal}" targeting ${singleModel}`,
+        details: { files_to_modify: plan.files_to_modify, assumptions: plan.assumptions },
+        timestamp: Date.now(),
+      });
+      return plan;
+    }
 
     this.planAbort = new AbortController();
     let plan: PlanProposal;
@@ -299,7 +383,7 @@ export class FlappyAutoOrchestrator {
           runId,
           agent: 'Planner',
           requirements: { taskType: 'planning', minContext: 8192, tools: false, vision: false },
-          pinnedModelId: singleModel,
+          pinnedModelId: undefined,
           pinnedFallbackPolicy: 'ask_user',
           signal: this.planAbort.signal,
           onModelUsed: (model, isPinned) => {
@@ -323,12 +407,14 @@ export class FlappyAutoOrchestrator {
             ctx.model.model_id,
             prompt,
             projectFiles,
-            rules.universalRules,
+            rules.effectiveRules || rules.universalRules,
             ctx.apiKey,
             this.planAbort?.signal,
-            runId
+            runId,
+            availableAgents
           )
       );
+
     } catch (err: any) {
       if (err?.name === 'PoolExhaustedError') {
         // B2: pause at planning stage too; resolution replans after the user acts.
@@ -347,30 +433,6 @@ export class FlappyAutoOrchestrator {
         } catch { /* run row optional */ }
       }
       throw err;
-    }
-
-    // GAP-007: single-model mode bypasses multi-agent delegation. The pinned
-    // model already produced the plan; the graph is a single agent loop.
-    if (singleModel) {
-      plan = {
-        ...plan,
-        planner_model: singleModel,
-        graph: {
-          ...plan.graph,
-          nodes: [
-            {
-              id: 'node-1',
-              agent: 'Coder',
-              description: prompt,
-              depends_on: [],
-              status: 'pending',
-              substitutions: [],
-              tool_calls: [],
-              iterations: 0,
-            },
-          ],
-        },
-      };
     }
 
     if (this.opts.taskRepo && this.activeSessionId) {
@@ -436,6 +498,7 @@ export class FlappyAutoOrchestrator {
       context: { run_id: runId },
       timestamp: Date.now(),
     });
+    this.pendingPlan = null;
   }
 
   /** Cancel the active run(s): aborts in-flight completions, marks nodes cancelled (FR-ORC-010). */
@@ -624,6 +687,18 @@ export class FlappyAutoOrchestrator {
             from: verdict.from || 'Tester/Reviewer',
             text: verdict.feedback || '',
           });
+          // GAP-009: structured feedback.iteration event for TUI observation.
+          this.opts.eventBus.emit({
+            type: 'feedback.iteration',
+            run_id: runId,
+            node_id: coderNode.id,
+            agent: 'Coder',
+            iteration: feedbackRounds,
+            max_iterations: maxFeedback,
+            from: verdict.from || 'Tester/Reviewer',
+            feedback: (verdict.feedback || '').slice(0, 2000),
+            timestamp: Date.now(),
+          });
           this.opts.eventBus.emit({
             type: 'log',
             level: 'warn',
@@ -780,7 +855,14 @@ export class FlappyAutoOrchestrator {
         if (this.opts.taskRepo) {
           try { this.opts.taskRepo.setRunStatus(runId, 'cancelled'); } catch { /* ignore */ }
         }
-        this.emitRunFailed(runId, err.message || 'Run cancelled', 'cancelled');
+        // GAP-012: emit structured run.cancelled event with exit code 130.
+        this.opts.eventBus.emit({
+          type: 'run.cancelled',
+          run_id: runId,
+          reason: err.message || 'Run cancelled by user',
+          exit_code: 130,
+          timestamp: Date.now(),
+        });
         throw err;
       }
       // Feedback escalation and ordinary node failures.

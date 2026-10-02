@@ -1,4 +1,4 @@
-import { PlanProposal, PlanProposalSchema } from '@flappycode/protocol';
+import { AgentDefinition, PlanProposal, PlanProposalSchema } from '@flappycode/protocol';
 import { CompletionRequest, ProviderConnector } from '@flappycode/providers';
 import { ProviderConfig } from '@flappycode/protocol';
 
@@ -12,6 +12,16 @@ export class PlannerOutputError extends Error {
 }
 
 export class TaskPlanner {
+  /**
+   * Build the agent listing section dynamically from available agents (GAP-008).
+   * This ensures the planner knows about custom agents defined in .flappycode/agents/.
+   */
+  private static buildAgentList(agents: Record<string, AgentDefinition>): string {
+    return Object.entries(agents)
+      .map(([name, def]) => `  - "${name}": ${def.system_prompt.slice(0, 80)}`)
+      .join('\n');
+  }
+
   public static async generatePlan(
     connector: ProviderConnector,
     cfg: ProviderConfig,
@@ -21,14 +31,27 @@ export class TaskPlanner {
     rulesSummary: string,
     apiKey?: string,
     signal?: AbortSignal,
-    runId?: string
+    runId?: string,
+    /** Available agents including custom (GAP-008). */
+    availableAgents?: Record<string, AgentDefinition>
   ): Promise<PlanProposal> {
     const planRunId = runId ?? `run_${Date.now()}`;
+
+    const agentNames = availableAgents
+      ? Object.keys(availableAgents).map((n) => `"${n}"`).join(' | ')
+      : '"File-Finder" | "Coder" | "Tester" | "Reviewer" | "Command-Executor" | "Codebase-Analyst"';
+
+    const agentDescriptions = availableAgents
+      ? `Available agents:\n${this.buildAgentList(availableAgents)}`
+      : '';
+
     const systemPrompt = `You are FlappyCode's Planner agent.
 Your task is to decompose the user's coding request into a structured JSON task graph.
 
 RULES:
 ${rulesSummary}
+
+${agentDescriptions}
 
 You MUST return ONLY valid JSON matching this schema:
 {
@@ -39,7 +62,7 @@ You MUST return ONLY valid JSON matching this schema:
   "nodes": [
     {
       "id": "node-1",
-      "agent": "File-Finder" | "Coder" | "Tester" | "Reviewer" | "Command-Executor" | "Codebase-Analyst",
+      "agent": ${agentNames},
       "description": "action description",
       "depends_on": []
     }
@@ -67,14 +90,20 @@ ${projectFiles.slice(0, 30).join('\n')}
     let parsed = this.tryParseJson(responseText);
 
     // If first attempt fails, perform EXACTLY ONE repair attempt per FR-ORC-011
+    // GAP-046: structured repair prompt includes the actual validation errors
     if (!parsed) {
+      const schemaDescription = `Required JSON schema: { goal: string, files_to_modify: string[], assumptions: string[], risks: string[], nodes: [{ id: string, agent: string (one of ${agentNames}), description: string, depends_on: string[] }] }`;
+
       const repairReq: CompletionRequest = {
         model: plannerModel,
         messages: [
-          { role: 'system', content: 'You fix invalid JSON. Output ONLY valid JSON.' },
+          {
+            role: 'system',
+            content: `You fix invalid JSON output from a planner. Output ONLY the corrected valid JSON.\n\n${schemaDescription}`,
+          },
           {
             role: 'user',
-            content: `The following text was invalid JSON. Please repair and output valid JSON:\n\n${responseText}`,
+            content: `The following text was supposed to be valid JSON matching the schema above but failed to parse. Repair and output ONLY the corrected valid JSON:\n\n${responseText}`,
           },
         ],
         temperature: 0,

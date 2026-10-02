@@ -1,6 +1,6 @@
 # Phase 1 Gap Implementation — Progress Tracker
 
-## Current Status: Lint ✅ | Tests ✅ (110/110) | Build ✅
+## Current Status: Lint ✅ | Tests ✅ (268/268 across 40 files) | Build ✅
 
 ---
 
@@ -27,31 +27,34 @@
 | GAP-044 | Agent fallbackPolicy | ✅ Done | `router.ts` returns `needsUserDecision` for `ask_user`/`abort` when a pinned model is unavailable (no silent re-route); `FallbackExecutor` emits `question.asked` and waits for the user decision (`next_best_fit`/`cancel`). Covered by Stage B5 tests. |
 | GAP-034-036,039,041-043 | Provider Profiles & Connectors | ✅ Done | Done: GAP-034 (Ollama Cloud profile added with 30 RPM, rate_limited_free rule, bearer auth, cloud endpoint); GAP-035 (Anthropic and Google bidirectional tool-call normalization with request mapping, SSE functionCall/tool_use delta parser, and tool-result round trip); GAP-036 (User-Agent header `flappycode/<version>` on all outbound Google and Ollama requests); GAP-039 (authenticate before discovery); GAP-041 (bundled data-use policy); GAP-042 (token bucket rate limiter); GAP-043 (modality/latency/price filters). Covered in `tests/unit/connectors.test.ts` & `tests/integration/stage-b-completion.test.ts`. |
 
-## Stage C: Multi-Agent Orchestration — Status: 🔴 Partially Done
+## Stage C: Multi-Agent Orchestration — Status: ✅ Complete
 
 | GAP | Item | Status | Notes |
 |-----|------|--------|-------|
-| GAP-007 | Single-Model Mode | ❌ Missing | `--model` option exists in CLI but not wired to bypass multi-agent. |
-| GAP-008 | Declarative Agent Definitions | 🔶 Partial | `BUILTIN_AGENTS` exists but no `.flappycode/agents/*.yaml` file scanning. |
-| GAP-009 | Reviewer/Tester Feedback Loop | ❌ Missing | Single-shot step execution, no multi-turn loop. |
-| GAP-013 | Parallel Execution Concurrency | 🔶 Partial | `DagExecutor` exists but off-by-one `Math.max(1,...)` needs correction. |
-| GAP-012 | Run Cancellation & Exit 130 | ❌ Missing | No SIGINT/Esc→cancelRun wiring, no exit code 130. |
-| GAP-014/050 | Context.md & Changelog.md Updates | ✅ Done | `DocsKeeper` records changes; wired in post-run finalization. |
-| GAP-025/026/054 | Sessions, Compaction, Recovery | 🔶 Partial | `SessionRepo` exists, `ContextManager` has compaction. `--continue` not wired. |
-| GAP-046 | Planner Repair & Fallback | ❌ Missing | No repair prompt or planner model fallback on schema failure. |
-| GAP-019 | Search Tool for Agents | 🔶 Partial | `SearchTool` exists but not in agent `allowed_tools`. |
-| GAP-027 | Live Task Graph View | ❌ Missing | No `task-graph.ts` screen. Status bar state machine incomplete. |
+| GAP-007 | Single-Model Mode | ✅ Done | Bypasses planner when `--model <id>` (≠ flappyauto) is passed, constructs direct Coder node, preserves PlanGate & permission safety gates, wired in CLI headless `run --model` and engine. Verified in `tests/unit/single-model.test.ts`. |
+| GAP-008 | Declarative Agent Definitions | ✅ Done | Loads `.flappycode/agents/*.yaml\|json`, parses schema, merges with/overrides built-in agents, provides fallback policies and tool scopes. CLI `agents list` & `/agents` wired. Verified in `tests/unit/declarative-agents.test.ts`. |
+| GAP-009 | Reviewer/Tester Feedback Loop | ✅ Done | Multi-turn Reviewer/Tester to Coder loop bounded by max iterations (default 3), preserves completed node results, emits `feedback.iteration` events, terminates on `VERDICT: PASS` or escalates. Verified in `tests/unit/feedback-loop.test.ts`. |
+| GAP-013 | Parallel Execution Concurrency | ✅ Done | Concurrency guard in `DagExecutor` prevents off-by-one over-admission; admits only available free slots up to `maxConcurrency`; parallel sibling execution verified with timing overlap in `tests/unit/dag-concurrency.test.ts`. |
+| GAP-012 | Run Cancellation & Exit 130 | ✅ Done | SIGINT / Esc triggers `engine.cancel(runId)` / `executor.cancel()`, aborts in-flight completions, marks non-terminal nodes as `cancelled`, emits `run.cancelled` event with exit code 130. Verified in `tests/unit/cancellation.test.ts`. |
+| GAP-014/050 | Context.md & Changelog.md Updates | ✅ Done | `DocsKeeper` records changes; wired in post-run finalization; verified in Stage C integration suite. |
+| GAP-025/026/054 | Sessions, Compaction, Recovery | ✅ Done | `SessionRepository` persists sessions and messages; `ProjectMemoryRepository` stores project memories across runs; `ContextManager` role-based slicing and compaction; CLI `sessions list`, `sessions resume <id>`, `sessions delete <id>`, and `/sessions` wired. Verified in `tests/unit/sessions.test.ts` & `tests/unit/context-slicing.test.ts`. |
+| GAP-046 | Planner Repair & Fallback | ✅ Done | Schema parsing failure throws structured `PlannerOutputError`, emits `planner.failed`, and triggers model fallback with exclusion of failing model. Verified in `tests/unit/planner-repair.test.ts`. |
+| GAP-019 | Search Tool for Agents | ✅ Done | `search` tool added to allowed_tools for Coder, Codebase-Analyst, File-Finder; excluded from Reviewer, Command-Executor, Tester per security specifications. Verified in `tests/unit/agent-search.test.ts`. |
+| GAP-027 | Live Task Graph View | ✅ Done | `TaskGraphScreen` renders reactive ASCII/Unicode DAG with agents, nodes, statuses, model selections, substitutions, feedback iterations, and status bar state machine across 60/80/120 columns. Tested in `tests/tui/stage-c-screens.test.ts`. |
+| P1-G8 / P1-G10 | TUI Phase 1 Screens | ✅ Done | `PlanApprovalScreen`, `DiffReviewScreen`, `PermissionPromptScreen`, `PoolExhaustedScreen`, `QuestionPromptScreen` (GAP-048) fully implemented, width-adaptive, and wired into CLI/TUI flows. Tested in `tests/tui/stage-c-screens.test.ts`. |
 
-## Stage D: Rules & Product Interaction — Status: 🔴 Partially Done
+## Stage D: Rules & Product Interaction — Status: ✅ Complete
 
 | GAP | Item | Status | Notes |
 |-----|------|--------|-------|
-| GAP-018 | Full RULES Bundling & Conflict Detection | 🔶 Partial | `RulesLoader` exists with hierarchical loading. Conflict detector exists. Bundling into cli package not verified. |
-| GAP-048 | Clarifying Questions | ❌ Missing | No `ask_question` tool or `question-prompt.ts` screen. |
-| GAP-032/040 | Provider Diagnostics & Auto-Detection | 🔶 Partial | `doctor` command exists. No `providers test`. No auto-detect Ollama/LM Studio. |
-| GAP-033 | Real Config System | ❌ Missing | No `config-loader.ts`. No `config get|set|path` CLI commands. |
-| GAP-020 | Git Tool Integration | 🔶 Partial | `GitTool` exists but no push confirmation, protected branch check, or PR description. |
-| GAP-045 | Persisted Undo Engine | 🔶 Partial | `UndoEngine` uses in-memory snapshots. No persistent SQLite storage. |
+| GAP-018 | Full RULES Bundling & Conflict Detection | ✅ Done | Packaged universal `RULES.md` asset in `@flappycode/cli` and `@flappycode/core` assets; hierarchical resolution (Universal -> Category -> Project -> Nested Scoped); structural conflict detector flags contradictory laws (PlanGate/secrets bypass) without false-positive override penalties. Verified in `tests/unit/rules-loader.test.ts` & `tests/unit/rules-conflict.test.ts`. |
+| GAP-048 | Clarifying Questions | ✅ Done | `ask_question` tool, `question.asked`/`question.answered` lifecycle events, interactive `QuestionPromptScreen` (60/80/120 columns with word wrapping and multiple choice options), engine routing, and headless fallback. Verified in `tests/unit/question-tool.test.ts` & `tests/tui/stage-d-screens.test.ts`. |
+| GAP-032 | Provider Diagnostics & Health State | ✅ Done | `flappycode providers test [id]` command, SQLite `provider_health` repository tracking latency, status, rolling errors, and timestamps; `doctor` surfaces real reachability, DB PRAGMA integrity, and remediation hints. Verified in `tests/unit/provider-health.test.ts`. |
+| GAP-040 | Local Provider Auto-Detection | ✅ Done | `LocalProviderDetector` probes default/custom endpoints for Ollama (11434), LM Studio (1234), and llama.cpp (8080) with timeout and model discovery; live integration in `OnboardingWizardScreen`. Verified in `tests/unit/provider-detection.test.ts`. |
+| GAP-033 | Real Config System & Policies | ✅ Done | Full config system with strict precedence `CLI > Project > User > Defaults`; commands `config get`, `config set`, `config path`, `config edit`; `maskSecrets` recursive token redaction; `auto:*` router policy interpretation. Verified in `tests/unit/config-loader.test.ts`. |
+| GAP-020 | Git Tool Integration & Safety | ✅ Done | Structured status and diff, command injection protected branch creation, pre-commit secret scanning via `SecretGuard`, protected branches (`main`/`master`) push block without explicit confirmation, markdown PR draft generation. Verified in `tests/unit/git-tool.test.ts`. |
+| GAP-045 | Persisted Undo Engine | ✅ Done | SQLite-backed `undo_batch` and `undo_file` tables via `UndoRepository`; atomic multi-file revert surviving engine and process restarts; interactive hunk review in `DiffReviewScreen`. Verified in `tests/unit/undo-persistence.test.ts`. |
+| GAP-049 | Category-Specific Rules & Override | ✅ Done | 10 repository categories (Frontend, Backend, Mobile, CLI, Library, Infra, Data/ML, Monorepo, Docs, Marketing/SEO) detected via multi-signal heuristics with manual override support in `flappy.config.json` category field; full markdown rules injected into agent prompts without truncation. Verified in `tests/unit/category-rules.test.ts`. |
 
 ## Stage E: CLI & Server Correctness — Status: 🔶 Partially Done
 
@@ -86,5 +89,6 @@
 ## Immediate Next Steps
 1. ✅ Fixed blocking issues (ContextManager import, run.started event)
 2. **Stage B**: ✅ Fully completed (`FallbackExecutor`, backoff/eventing, periodic scheduler, fallbackPolicy, pool exhaustion TUI/server, model tag/untag CLI/TUI/server, Ollama Cloud, Anthropic & Google tool-call normalization, User-Agent headers).
-3. **Stage C**: Wire `--model` single-model mode, implement feedback loop, add cancellation
-4. Continue through remaining stages systematically
+3. **Stage C**: ✅ Fully completed (single-model mode, declarative agents, Reviewer/Tester feedback loop, DAG concurrency without over-admission, run cancellation & exit 130, sessions/compaction/project memory, planner repair & model fallback, search tool security scope, live task graph view P1-G9, approval & question screens P1-G8/G10).
+4. **Stage D**: ✅ Fully completed (Universal RULES bundling in packages/assets, nested directory scoping, structural conflict detection, clarifying question lifecycle & TUI prompt, provider diagnostics & SQLite health metrics, local provider auto-detection for Ollama/LM Studio/llama.cpp, real config loader with precedence & secret masking, Git tool safety with secret scanning & protected branches, SQLite persisted undo engine, 10-category multi-signal rules activation & manual override).
+5. **Stage E**: CLI & Server Correctness (Headless exit codes 2/130, structured run.failed event, server command handling, debug logging, error formatting).

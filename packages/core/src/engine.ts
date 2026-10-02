@@ -11,12 +11,21 @@ import {
   FlappyDatabase,
   HybridSecretStore,
   ModelRepository,
+  ProjectMemoryRepository,
+  ProviderHealthRepository,
   ProviderRepository,
   SessionRepository,
   TaskRepository,
+  UndoRepository,
   UsageRepository,
 } from '@flappycode/storage';
-import { PROVIDER_PROFILES } from '@flappycode/providers';
+import {
+  DetectedProvider,
+  DetectorOptions,
+  LocalProviderDetector,
+  PROVIDER_PROFILES,
+} from '@flappycode/providers';
+
 import { FlappyEventBus } from './events/event-bus.js';
 import { ModelRegistry } from './registry/model-registry.js';
 import { DeterministicRouter } from './router/router.js';
@@ -67,6 +76,8 @@ export class FlappyEngine {
   public readonly auditRepo: AuditRepository;
   public readonly usageRepo: UsageRepository;
   public readonly agentRepo: AgentRepository;
+  public readonly healthRepo: ProviderHealthRepository;
+  public readonly undoRepo: UndoRepository;
 
   public readonly registry: ModelRegistry;
   public readonly router: DeterministicRouter;
@@ -83,6 +94,7 @@ export class FlappyEngine {
   public readonly search: SearchTool;
   public readonly orchestrator: FlappyAutoOrchestrator;
   public readonly rateLimiter: ProviderRateLimiter;
+  public readonly projectMemoryRepo: ProjectMemoryRepository;
 
   /** Effective configuration (CLI > project > user > defaults), schema-validated. */
   public readonly config: FlappyConfig;
@@ -124,6 +136,8 @@ export class FlappyEngine {
     this.auditRepo = new AuditRepository(this.db.db);
     this.usageRepo = new UsageRepository(this.db.db);
     this.agentRepo = new AgentRepository(this.db.db);
+    this.healthRepo = new ProviderHealthRepository(this.db.db);
+    this.undoRepo = new UndoRepository(this.db.db);
 
     this.registry = new ModelRegistry(
       this.providerRepo,
@@ -132,7 +146,7 @@ export class FlappyEngine {
       this.eventBus
     );
     this.router = new DeterministicRouter(this.registry, this.eventBus);
-    this.rulesLoader = new RulesLoader(this.projectRoot);
+    this.rulesLoader = new RulesLoader(this.projectRoot, this.config.category);
     this.planGate = new PlanGate();
     this.docsKeeper = new DocsKeeper(this.projectRoot);
     this.secretGuard = new SecretGuard();
@@ -140,11 +154,14 @@ export class FlappyEngine {
 
     this.fsJail = new FsJail(this.projectRoot, this.planGate);
     this.diffEngine = DiffEngine;
-    this.undoEngine = new UndoEngine(this.fsJail);
+    this.undoEngine = new UndoEngine(this.fsJail, this.undoRepo);
     this.shell = new ShellTool(this.projectRoot, this.permissionEngine, this.secretGuard);
-    this.git = new GitTool(this.shell, this.secretGuard);
+    this.git = new GitTool(this.shell, this.secretGuard, this.config.git?.protected_branches);
+
     this.search = new SearchTool(this.fsJail);
     this.rateLimiter = new ProviderRateLimiter();
+    this.projectMemoryRepo = new ProjectMemoryRepository(this.db.db);
+
 
     // GAP-008: file-backed custom agents; GAP-007: persisted bindings.
     const loadedAgents = loadAgentsFromProject(this.projectRoot);
@@ -185,6 +202,7 @@ export class FlappyEngine {
       auditRepo: this.auditRepo,
       taskRepo: this.taskRepo,
       sessionRepo: this.sessionRepo,
+      projectMemoryRepo: this.projectMemoryRepo,
       customAgents: loadedAgents.agents,
       agentBindings,
       rateLimiter: this.rateLimiter,
@@ -519,17 +537,113 @@ export class FlappyEngine {
     return { user: getUserConfigPath(), project: getProjectConfigPath(this.projectRoot) };
   }
 
+  public async testProviders(providerId?: string): Promise<
+    Array<{
+      provider_id: string;
+      display_name: string;
+      status: 'healthy' | 'degraded' | 'unreachable' | 'unknown' | 'auth_failed' | 'rate_limited';
+      latency_ms: number;
+      error?: string;
+    }>
+  > {
+    const providers = providerId
+      ? [this.providerRepo.get(providerId)].filter(Boolean) as ProviderConfig[]
+      : this.providerRepo.listEnabled();
+
+    if (providerId && providers.length === 0) {
+      throw new Error(`Provider '${providerId}' not found.`);
+    }
+
+    const results = [];
+    for (const p of providers) {
+      const connector = this.registry.getConnector(p.id);
+      if (!connector) {
+        results.push({
+          provider_id: p.id,
+          display_name: p.display_name,
+          status: 'unknown' as const,
+          latency_ms: 0,
+          error: `No connector registered for provider type '${p.type}'`,
+        });
+        continue;
+      }
+
+      const apiKey = await this.secretStore.getSecret(p.id);
+      let health: import('@flappycode/providers').HealthInfo;
+      try {
+        health = await connector.healthCheck(p, apiKey || undefined);
+      } catch (err: any) {
+        health = {
+          status: 'offline',
+          latencyMs: 0,
+          lastChecked: Date.now(),
+          error: err.message,
+        };
+      }
+
+      let mappedStatus: 'healthy' | 'degraded' | 'unreachable' | 'unknown' | 'auth_failed' | 'rate_limited';
+      if (health.status === 'healthy') mappedStatus = 'healthy';
+      else if (health.status === 'auth_failed') mappedStatus = 'auth_failed';
+      else if (health.status === 'rate_limited') mappedStatus = 'rate_limited';
+      else if (health.status === 'offline' || (health.status as any) === 'unhealthy') mappedStatus = 'unreachable';
+      else mappedStatus = 'unknown';
+
+      const record = this.healthRepo.recordCheck({
+        provider_id: p.id,
+        status: mappedStatus,
+        latency_ms: health.latencyMs,
+        error: health.error,
+      });
+
+      this.eventBus.emit({
+        type: 'provider.tested',
+        provider_id: p.id,
+        status: mappedStatus,
+        latency_ms: health.latencyMs,
+        error: health.error,
+        timestamp: Date.now(),
+      });
+
+      this.eventBus.emit({
+        type: 'provider.status',
+        provider_id: p.id,
+        status: health.status,
+        latency_ms: health.latencyMs,
+        error: health.error,
+        timestamp: Date.now(),
+      });
+
+      results.push({
+        provider_id: p.id,
+        display_name: p.display_name,
+        status: mappedStatus,
+        latency_ms: record.latency_ms,
+        error: record.last_error || undefined,
+      });
+    }
+
+    return results;
+  }
+
+  public async detectLocalProviders(opts?: DetectorOptions): Promise<DetectedProvider[]> {
+    return LocalProviderDetector.detectAll(opts);
+  }
+
   public async doctor(): Promise<{
     nodeVersion: string;
     keychainActive: boolean;
     dbOpen: boolean;
+    dbIntegrity: boolean;
     providersCount: number;
+    providersReachable: number;
+    providerHealth: Array<{ id: string; status: string; latency_ms: number; error?: string }>;
     freeModelsCount: number;
     gitInstalled: boolean;
     configProject: boolean;
     configUser: boolean;
     agentsLoaded: number;
     agentErrors: number;
+    remediationHints: string[];
   }> {
     let gitOk = false;
     try {
@@ -539,22 +653,107 @@ export class FlappyEngine {
       gitOk = false;
     }
 
+    let dbIntegrity = false;
+    try {
+      const row = (this.db.db as any).prepare('PRAGMA integrity_check').get() as any;
+      dbIntegrity = row && (row.integrity_check === 'ok' || Object.values(row)[0] === 'ok');
+    } catch {
+      dbIntegrity = false;
+    }
+
+    const enabledProviders = this.providerRepo.listEnabled();
+    const testResults = await this.testProviders().catch(() => []);
+    const reachableCount = testResults.filter((r) => r.status === 'healthy').length;
+
+    const hints: string[] = [];
+    if (!gitOk) {
+      hints.push('Git is not installed or not in PATH. Install git to enable git tooling and checkpoint tracking.');
+    }
+    if (enabledProviders.length === 0) {
+      hints.push('No providers connected. Run "flappycode providers add" to connect a provider.');
+    } else if (reachableCount === 0 && enabledProviders.length > 0) {
+      hints.push('All enabled providers failed reachability checks. Run "flappycode providers test" for details.');
+    }
+    if (this.agentLoadErrors.length > 0) {
+      hints.push(`${this.agentLoadErrors.length} custom agent definition(s) failed validation in .flappycode/agents.`);
+    }
+
     return {
       nodeVersion: process.version,
       keychainActive: this.secretStore.isKeychainActive(),
       dbOpen: this.db.db.open,
-      providersCount: this.providerRepo.listEnabled().length,
+      dbIntegrity,
+      providersCount: enabledProviders.length,
+      providersReachable: reachableCount,
+      providerHealth: testResults.map((r) => ({
+        id: r.provider_id,
+        status: r.status,
+        latency_ms: r.latency_ms,
+        error: r.error,
+      })),
       freeModelsCount: this.getFreeModelsCount(),
       gitInstalled: gitOk,
       configProject: !!this.configSources.project,
       configUser: !!this.configSources.user,
       agentsLoaded: Object.keys(this.listAgents()).length,
       agentErrors: this.agentLoadErrors.length,
+      remediationHints: hints,
     };
   }
 
+
   public undo(): { success: boolean; restoredFiles: string[]; error?: string } {
     return this.undoEngine.undoLatest();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Sessions (GAP-025 / GAP-054)
+  // ---------------------------------------------------------------------------
+
+  /** List all sessions, optionally filtered by project. */
+  public listSessions(): Array<{ id: string; project_path: string; created_at: number; updated_at: number; summary?: string }> {
+    return this.sessionRepo.listSessions(this.projectRoot);
+  }
+
+  /** Delete a session and cascade-delete its runs, messages, and nodes. */
+  public deleteSession(sessionId: string): void {
+    this.sessionRepo.deleteSession(sessionId);
+  }
+
+  /** Get a session and its message history (GAP-025/054). */
+  public resumeSession(sessionId: string): { session: any; messages: any[] } | null {
+    const session = this.sessionRepo.getSession(sessionId);
+    if (!session) return null;
+    const messages = this.sessionRepo.getMessages(sessionId);
+    return { session, messages };
+  }
+
+  /**
+   * Resume a session by id (GAP-025/054). Returns the latest non-completed
+   * task run prompt to re-submit. Safe resume semantics: does not carry
+   * forward stale approvals.
+   */
+  public getResumableRun(sessionId: string): { runId: string; prompt: string; status: string } | null {
+    const session = this.sessionRepo.getSession(sessionId);
+    if (!session) return null;
+    // Find the latest task run that is NOT completed.
+    const sql = `SELECT * FROM task_run WHERE session_id = ? AND status NOT IN ('completed', 'rejected', 'cancelled') ORDER BY id DESC LIMIT 1`;
+    const row = (this.db.db as any).prepare(sql).get(sessionId) as any;
+    if (!row) return null;
+    return { runId: row.id, prompt: row.prompt, status: row.status };
+  }
+
+  /**
+   * Resume the latest session in this project directory (--continue).
+   * Returns the session id + resumable run info, or null if nothing to resume.
+   */
+  public getLatestResumableSession(): { sessionId: string; runId: string; prompt: string; status: string } | null {
+    const sessions = this.sessionRepo.listSessions(this.projectRoot);
+    for (const s of sessions) {
+      const run = this.getResumableRun(s.id);
+      if (run) return { sessionId: s.id, ...run };
+    }
+    return null;
   }
 
   public close(): void {

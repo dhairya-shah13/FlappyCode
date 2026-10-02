@@ -8,3 +8,7 @@ export * from './repositories/task-repo.js';
 export * from './repositories/audit-repo.js';
 export * from './repositories/usage-repo.js';
 export * from './repositories/agent-repo.js';
+export * from './repositories/project-memory-repo.js';
+export * from './repositories/provider-health-repo.js';
+export * from './repositories/undo-repo.js';
+

@@ -156,6 +156,89 @@ export const RunFailedEventSchema = z.object({
 });
 export type RunFailedEvent = z.infer<typeof RunFailedEventSchema>;
 
+export const RunCancelledEventSchema = z.object({
+  type: z.literal('run.cancelled'),
+  run_id: z.string(),
+  reason: z.string().optional(),
+  exit_code: z.literal(130),
+  timestamp: z.number().int(),
+});
+export type RunCancelledEvent = z.infer<typeof RunCancelledEventSchema>;
+
+export const FeedbackIterationEventSchema = z.object({
+  type: z.literal('feedback.iteration'),
+  run_id: z.string(),
+  node_id: z.string(),
+  agent: z.string(),
+  iteration: z.number().int(),
+  max_iterations: z.number().int(),
+  from: z.string(),
+  feedback: z.string(),
+  timestamp: z.number().int(),
+});
+export type FeedbackIterationEvent = z.infer<typeof FeedbackIterationEventSchema>;
+
+export const QuestionAnsweredEventSchema = z.object({
+  type: z.literal('question.answered'),
+  question_id: z.string(),
+  run_id: z.string(),
+  answer: z.string(),
+  timestamp: z.number().int(),
+});
+export type QuestionAnsweredEvent = z.infer<typeof QuestionAnsweredEventSchema>;
+
+export const RuleConflictEventSchema = z.object({
+  type: z.literal('rule.conflict_detected'),
+  conflicts: z.array(
+    z.object({
+      ruleA: z.string(),
+      ruleB: z.string(),
+      description: z.string(),
+      scope: z.string().optional(),
+    })
+  ),
+  scope: z.string().optional(),
+  timestamp: z.number().int(),
+});
+export type RuleConflictEvent = z.infer<typeof RuleConflictEventSchema>;
+
+export const ProviderTestedEventSchema = z.object({
+  type: z.literal('provider.tested'),
+  provider_id: z.string(),
+  status: z.enum(['healthy', 'degraded', 'unreachable', 'unknown', 'auth_failed', 'rate_limited']),
+  latency_ms: z.number().int(),
+  error: z.string().optional(),
+  timestamp: z.number().int(),
+});
+export type ProviderTestedEvent = z.infer<typeof ProviderTestedEventSchema>;
+
+export const GitPushRequestedEventSchema = z.object({
+  type: z.literal('git.push_requested'),
+  remote: z.string(),
+  branch: z.string(),
+  is_force: z.boolean(),
+  is_protected: z.boolean(),
+  timestamp: z.number().int(),
+});
+export type GitPushRequestedEvent = z.infer<typeof GitPushRequestedEventSchema>;
+
+export const GitPushConfirmedEventSchema = z.object({
+  type: z.literal('git.push_confirmed'),
+  remote: z.string(),
+  branch: z.string(),
+  confirmed: z.boolean(),
+  timestamp: z.number().int(),
+});
+export type GitPushConfirmedEvent = z.infer<typeof GitPushConfirmedEventSchema>;
+
+export const UndoRestoredEventSchema = z.object({
+  type: z.literal('undo.restored'),
+  batch_id: z.string(),
+  restored_files: z.array(z.string()),
+  timestamp: z.number().int(),
+});
+export type UndoRestoredEvent = z.infer<typeof UndoRestoredEventSchema>;
+
 export const LogEventSchema = z.object({
   type: z.literal('log'),
   level: z.enum(['debug', 'info', 'warn', 'error']),
@@ -176,12 +259,21 @@ export const FlappyEventSchema = z.discriminatedUnion('type', [
   DiffReadyEventSchema,
   ApprovalRequestedEventSchema,
   QuestionAskedEventSchema,
+  QuestionAnsweredEventSchema,
+  RuleConflictEventSchema,
+  ProviderTestedEventSchema,
+  GitPushRequestedEventSchema,
+  GitPushConfirmedEventSchema,
+  UndoRestoredEventSchema,
   PoolExhaustedEventSchema,
   ProviderStatusEventSchema,
   RegistryUpdatedEventSchema,
   RunStartedEventSchema,
   RunCompletedEventSchema,
   RunFailedEventSchema,
+  RunCancelledEventSchema,
+  FeedbackIterationEventSchema,
   LogEventSchema,
 ]);
 export type FlappyEvent = z.infer<typeof FlappyEventSchema>;
+

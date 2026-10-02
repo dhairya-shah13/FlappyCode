@@ -13,7 +13,7 @@ export const BUILTIN_AGENTS: Record<string, AgentDefinition> = {
     name: 'Coder',
     system_prompt:
       'You are the lead implementation and editing agent. Your job is to make precise, minimal code changes to satisfy the task. Always explain why changes are being made. All edits are reviewed as diffs before being written to disk.',
-    allowed_tools: ['fs_read', 'fs_write', 'fs_delete', 'ask'],
+    allowed_tools: ['fs_read', 'fs_write', 'fs_delete', 'search', 'ask'],
     preferred_model_ref: 'flappyauto',
     fallback_policy: 'ask_user',
   },

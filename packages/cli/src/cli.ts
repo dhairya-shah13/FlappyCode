@@ -8,9 +8,19 @@ process.emitWarning = (warning: any, ...args: any[]) => {
   return (originalEmitWarning as any).call(process, warning, ...args);
 };
 
+import fs from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { Command } from 'commander';
 import readline from 'node:readline';
-import { FlappyEngine } from '@flappycode/core';
+import {
+  FlappyEngine,
+  getUserConfigPath,
+  getProjectConfigPath,
+  getConfigValue,
+  setConfigValue,
+  writeConfigFile,
+  maskSecrets,
+} from '@flappycode/core';
 import { FlappyServer } from '@flappycode/server';
 import {
   HomeScreen,
@@ -21,7 +31,10 @@ import {
   DiffReviewScreen,
   PermissionPromptScreen,
   PoolExhaustedScreen,
+  TaskGraphScreen,
+  QuestionPromptScreen,
 } from '@flappycode/tui';
+
 
 const program = new Command();
 
@@ -576,9 +589,59 @@ program.action(async () => {
         return;
       }
 
+      if (line === '/agents') {
+        process.stdout.write('\x1b[2J\x1b[H');
+        const agents = engine.listAgents();
+        console.log(Palette.bold(`Available Agents (${Object.keys(agents).length}):\n`));
+        for (const [name, def] of Object.entries(agents)) {
+          console.log(`  ${Palette.cyan(name)}: ${def.system_prompt.slice(0, 80)}...`);
+          console.log(`    Default model: ${Palette.dim(def.preferred_model_ref || 'flappyauto')} | Tools: ${Palette.dim(def.allowed_tools.join(', ') || 'none')}\n`);
+        }
+        await waitForAnyKey();
+        process.stdin.setRawMode(true);
+        isExecuting = false;
+        redraw();
+        return;
+      }
+
+      if (line === '/sessions') {
+        process.stdout.write('\x1b[2J\x1b[H');
+        const sessions = engine.listSessions();
+        console.log(Palette.bold(`Past Sessions (${sessions.length}):\n`));
+        for (const s of sessions) {
+          console.log(`  ${Palette.cyan(s.id)} - ${s.project_path} (${new Date(s.updated_at).toLocaleString()})`);
+        }
+        await waitForAnyKey();
+        process.stdin.setRawMode(true);
+        isExecuting = false;
+        redraw();
+        return;
+      }
+
+      if (line === '/help') {
+        process.stdout.write('\x1b[2J\x1b[H');
+        console.log(Palette.bold('FlappyCode Slash Commands:\n'));
+        console.log(`  ${Palette.cyan('/models')}                                  Open model catalog`);
+        console.log(`  ${Palette.cyan('/models tag <id> --tier <free|paid|disabled>')} Tag tier override`);
+        console.log(`  ${Palette.cyan('/models untag <id>')}                          Remove tier override`);
+        console.log(`  ${Palette.cyan('/agents')}                                  List available agents`);
+        console.log(`  ${Palette.cyan('/providers')}                               List connected providers`);
+        console.log(`  ${Palette.cyan('/providers add')}                           Connect a new provider`);
+        console.log(`  ${Palette.cyan('/sessions')}                                List past sessions`);
+        console.log(`  ${Palette.cyan('/undo')}                                    Undo last file modifications`);
+        console.log(`  ${Palette.cyan('/rules')}                                   Display active rules`);
+        console.log(`  ${Palette.cyan('/help')}                                    Show this help message`);
+        console.log(`  ${Palette.cyan('/exit')}                                    Exit FlappyCode\n`);
+        await waitForAnyKey();
+        process.stdin.setRawMode(true);
+        isExecuting = false;
+        redraw();
+        return;
+      }
+
       if (line.startsWith('/')) {
         process.stdout.write('\x1b[2J\x1b[H');
-        console.log(`Available slash commands: /models, /models tag <id> --tier <free|paid|disabled>, /models untag <id>, /providers, /providers add, /undo, /rules, /exit`);
+        console.log(`Available slash commands: /models, /models tag <id> --tier <free|paid|disabled>, /models untag <id>, /agents, /providers, /providers add, /sessions, /undo, /rules, /help, /exit`);
         await waitForAnyKey();
         process.stdin.setRawMode(true);
         isExecuting = false;
@@ -650,6 +713,17 @@ program.action(async () => {
         console.log(PlanApprovalScreen.render(plan, getWidth()));
 
         const executeWithProgress = async (runId: string) => {
+          console.log(
+            '\n' +
+              TaskGraphScreen.render({
+                goal: plan.goal,
+                nodes: plan.graph.nodes,
+                plannerModel: plan.planner_model,
+                state: 'WORKING',
+                width: getWidth(),
+              })
+          );
+
           const onStarted = (ev: any) => {
             console.log(Palette.cyan(`\n◐ [${ev.node.agent}] ${ev.node.description.slice(0, 70)}...`));
           };
@@ -677,14 +751,54 @@ program.action(async () => {
             engine.eventBus.on('diff.ready', onDiff),
           ];
 
+          engine.setAskUser(async (req) => {
+            console.log(
+              '\n' +
+                QuestionPromptScreen.render({
+                  questionId: req.questionId,
+                  agent: req.agent,
+                  question: req.question,
+                  options: req.options,
+                  width: getWidth(),
+                })
+            );
+            if (req.options && req.options.length > 0) {
+              const ans = await promptSingleLine(Palette.bold('Select option (number or text): '));
+              const num = parseInt(ans.trim(), 10);
+              if (!isNaN(num) && num >= 1 && num <= req.options.length) {
+                return req.options[num - 1];
+              }
+              return ans.trim() || req.options[0];
+            } else {
+              const ans = await promptSingleLine(Palette.bold('Answer: '));
+              return ans.trim() || 'No answer provided';
+            }
+          });
+
           const onDiffApprovalRequired = async (proposal: any): Promise<boolean> => {
             console.log('\n' + DiffReviewScreen.render(proposal.diffs, getWidth()));
-            console.log(Palette.bold('Approve diff? [ ↵ / a / y Apply ]  [ Esc / n Deny ]'));
+            console.log(Palette.bold('Approve diff? [ ↵ / a Apply all ]  [ y Review hunks ]  [ Esc / n Deny ]'));
             return new Promise((resolve) => {
-              const onKey = (_ch: string, key: any) => {
-                if (key?.name === 'y' || key?.name === 'return' || key?.name === 'a') {
+              const onKey = async (_ch: string, key: any) => {
+                if (key?.name === 'a' || key?.name === 'return') {
                   process.stdin.removeListener('keypress', onKey);
                   resolve(true);
+                } else if (key?.name === 'y') {
+                  process.stdin.removeListener('keypress', onKey);
+                  let anyHunkApproved = false;
+                  for (const d of proposal.diffs) {
+                    for (let h = 0; h < d.hunks.length; h++) {
+                      console.log(`\nFile: ${d.path}, Hunk ${h + 1}/${d.hunks.length}`);
+                      for (const l of d.hunks[h].lines) {
+                        console.log(l.startsWith('+') ? Palette.ok(l) : l.startsWith('-') ? Palette.error(l) : Palette.dim(l));
+                      }
+                      const decision = await promptSingleLine('Apply this hunk? [y/n]: ');
+                      if (decision.toLowerCase().startsWith('y')) {
+                        anyHunkApproved = true;
+                      }
+                    }
+                  }
+                  resolve(anyHunkApproved);
                 } else if (key?.name === 'n' || key?.name === 'escape' || key?.name === 'q') {
                   process.stdin.removeListener('keypress', onKey);
                   resolve(false);
@@ -693,6 +807,7 @@ program.action(async () => {
               process.stdin.on('keypress', onKey);
             });
           };
+
 
           const onPermissionApprovalRequired = async (req: {
             agent: string;
@@ -766,11 +881,13 @@ program.action(async () => {
               }
             }
           } finally {
+            engine.setAskUser(undefined);
             unsubs.forEach((unsub) => {
               try { unsub(); } catch {}
             });
           }
         };
+
 
         // Mandatory user approval (Rule 2.2 of RULES.md & CLIDesign.md §5.6)
         const decision = await promptPlanDecision();
@@ -887,7 +1004,7 @@ program
         process.exit(5);
       }
 
-      const plan = await engine.submitPrompt(prompt);
+      const plan = await engine.submitPrompt(prompt, { model: options.model });
 
       // Without --approve-plan, exit code 3 is mandatory per SRS FR-RUL-009 & CLIDesign.md §5.1
       if (!options.approvePlan) {
@@ -1037,6 +1154,49 @@ providersCmd
     console.log(Palette.ok(`✔ Disabled provider '${id}'`));
   });
 
+providersCmd
+  .command('test [id]')
+  .description('Test connectivity, authentication, and health of connected providers')
+  .option('--json', 'Output results as JSON')
+  .action(async (id?: string, options?: { json?: boolean }) => {
+    const engine = new FlappyEngine();
+    try {
+      if (!options?.json) {
+        console.log(Palette.bold(`\nTesting provider diagnostics${id ? ` for '${id}'` : ''}...`));
+      }
+      const results = await engine.testProviders(id);
+      if (options?.json) {
+        console.log(JSON.stringify(results, null, 2));
+        return;
+      }
+
+      console.log(`\nProvider Test Results (${results.length}):`);
+      for (const r of results) {
+        const statusTag =
+          r.status === 'healthy'
+            ? Palette.ok('healthy')
+            : r.status === 'rate_limited'
+              ? Palette.yellow('rate-limited')
+              : r.status === 'auth_failed'
+                ? Palette.error('auth-failed')
+                : r.status === 'unreachable'
+                  ? Palette.error('unreachable')
+                  : Palette.dim(r.status);
+        const latency = r.latency_ms > 0 ? ` (${r.latency_ms}ms)` : '';
+        const errorMsg = r.error ? ` — ${Palette.error(r.error)}` : '';
+        console.log(`  ${r.provider_id} [${statusTag}${latency}]${errorMsg}`);
+      }
+      console.log();
+    } catch (err: any) {
+      if (options?.json) {
+        console.log(JSON.stringify({ error: err.message }));
+      } else {
+        console.error(Palette.error(`✖ Provider test failed: ${err.message}`));
+      }
+      process.exit(1);
+    }
+  });
+
 // Models command
 const modelsCmd = program.command('models').description('List available models in the unified catalog');
 
@@ -1142,16 +1302,145 @@ modelsCmd
 program
   .command('doctor')
   .description('Diagnose environment, keychain, database, and providers')
-  .action(async () => {
+  .option('--json', 'Output diagnostics as JSON')
+  .action(async (options?: { json?: boolean }) => {
     const engine = new FlappyEngine();
     const doc = await engine.doctor();
+    if (options?.json) {
+      console.log(JSON.stringify(doc, null, 2));
+      return;
+    }
     console.log(Palette.bold('\nFlappyCode Diagnostics:'));
     console.log(`  Node.js Version:       ${Palette.ok(doc.nodeVersion)} (≥ 20 required)`);
     console.log(`  Database Storage:      ${doc.dbOpen ? Palette.ok('Connected (WAL mode)') : Palette.error('Closed')}`);
+    console.log(`  Database Integrity:    ${doc.dbIntegrity ? Palette.ok('Passed') : Palette.error('Corruption detected')}`);
     console.log(`  Secret Store:          ${doc.keychainActive ? Palette.ok('OS Keychain Active') : Palette.yellow('AES-256-GCM Encrypted Fallback')}`);
-    console.log(`  Connected Providers:   ${Palette.ok(String(doc.providersCount))}`);
+    console.log(`  Connected Providers:   ${Palette.ok(String(doc.providersCount))} (${doc.providersReachable} reachable)`);
+    if (doc.providerHealth && doc.providerHealth.length > 0) {
+      for (const p of doc.providerHealth) {
+        const status = p.status === 'healthy' ? Palette.ok('healthy') : Palette.error(p.status);
+        const err = p.error ? ` - ${p.error}` : '';
+        console.log(`    - ${p.id}: [${status}]${err}`);
+      }
+    }
     console.log(`  Free Models Pool:      ${Palette.ok(String(doc.freeModelsCount))} available`);
-    console.log(`  Git Tooling:           ${doc.gitInstalled ? Palette.ok('Installed') : Palette.yellow('Not found on PATH')}\n`);
+    console.log(`  Git Tooling:           ${doc.gitInstalled ? Palette.ok('Installed') : Palette.yellow('Not found on PATH')}`);
+    console.log(`  Config Files:          User: ${doc.configUser ? 'Found' : 'Default'} | Project: ${doc.configProject ? 'Found' : 'None'}`);
+    console.log(`  Agents Loaded:         ${Palette.ok(String(doc.agentsLoaded))} (${doc.agentErrors} invalid)`);
+    if (doc.remediationHints && doc.remediationHints.length > 0) {
+      console.log(Palette.yellow('\nRemediation Hints:'));
+      for (const hint of doc.remediationHints) {
+        console.log(`  • ${hint}`);
+      }
+    }
+    console.log();
+  });
+
+// Config command (GAP-033)
+const configCmd = program.command('config').description('Inspect and modify FlappyCode configuration');
+
+configCmd
+  .command('path')
+  .description('Print paths to user and project configuration files')
+  .option('--json', 'Output paths as JSON')
+  .action((options?: { json?: boolean }) => {
+    const userPath = getUserConfigPath();
+    const projectPath = getProjectConfigPath(process.cwd());
+    if (options?.json) {
+      console.log(JSON.stringify({ user: userPath, project: projectPath }, null, 2));
+      return;
+    }
+    console.log(Palette.bold('\nFlappyCode Configuration Paths:'));
+    console.log(`  User:    ${userPath}`);
+    console.log(`  Project: ${projectPath}\n`);
+  });
+
+configCmd
+  .command('get [key]')
+  .description('View configuration (sensitive keys are masked)')
+  .option('--json', 'Output as JSON')
+  .action((key?: string, options?: { json?: boolean }) => {
+    try {
+      const engine = new FlappyEngine();
+      if (key) {
+        const val = getConfigValue(engine.config, key);
+        const masked = maskSecrets(val);
+        if (options?.json || typeof masked === 'object') {
+          console.log(JSON.stringify(masked, null, 2));
+        } else {
+          console.log(String(masked));
+        }
+      } else {
+        const masked = maskSecrets(engine.config);
+        console.log(JSON.stringify(masked, null, 2));
+      }
+    } catch (err: any) {
+      console.error(Palette.error(`✖ ${err.message}`));
+      process.exit(1);
+    }
+  });
+
+configCmd
+  .command('set <key> <value>')
+  .description('Set a configuration setting (e.g. flappycode config set model_policy.allow_paid_models true)')
+  .option('--global', 'Write to user configuration instead of project configuration')
+  .option('--json', 'Output updated config as JSON')
+  .action((key: string, rawVal: string, options?: { global?: boolean; json?: boolean }) => {
+    try {
+      let parsedVal: any = rawVal;
+      if (rawVal === 'true') parsedVal = true;
+      else if (rawVal === 'false') parsedVal = false;
+      else if (!isNaN(Number(rawVal)) && rawVal.trim() !== '') parsedVal = Number(rawVal);
+      else {
+        try {
+          parsedVal = JSON.parse(rawVal);
+        } catch {
+          parsedVal = rawVal;
+        }
+      }
+
+      const userPath = getUserConfigPath();
+      const projectPath = getProjectConfigPath(process.cwd());
+      const targetPath = options?.global ? userPath : projectPath;
+
+      const engine = new FlappyEngine();
+      const updated = setConfigValue(engine.config, key, parsedVal);
+      writeConfigFile(targetPath, updated);
+
+      if (options?.json) {
+        console.log(JSON.stringify({ success: true, key, value: parsedVal, file: targetPath }, null, 2));
+      } else {
+        console.log(Palette.ok(`✔ Set '${key}' = ${JSON.stringify(parsedVal)} in ${targetPath}`));
+      }
+    } catch (err: any) {
+      console.error(Palette.error(`✖ ${err.message}`));
+      process.exit(1);
+    }
+  });
+
+configCmd
+  .command('edit')
+  .description('Open the active configuration file in your default editor')
+  .option('--global', 'Edit user configuration instead of project configuration')
+  .action((options?: { global?: boolean }) => {
+    const userPath = getUserConfigPath();
+    const projectPath = getProjectConfigPath(process.cwd());
+    const targetPath = options?.global ? userPath : projectPath;
+
+    if (!fs.existsSync(targetPath)) {
+      const engine = new FlappyEngine();
+      writeConfigFile(targetPath, engine.config);
+    }
+
+    const editor = process.env.VISUAL || process.env.EDITOR || (process.platform === 'win32' ? 'notepad' : 'nano');
+    console.log(Palette.cyan(`Opening configuration in ${editor}: ${targetPath}`));
+    try {
+      spawnSync(editor, [targetPath], { stdio: 'inherit' });
+    } catch (err: any) {
+      console.error(Palette.error(`✖ Could not launch editor '${editor}': ${err.message}`));
+      console.log(`Config path: ${targetPath}`);
+      process.exit(1);
+    }
   });
 
 // Sessions command
@@ -1169,6 +1458,19 @@ sessionsCmd
   });
 
 sessionsCmd
+  .command('resume <id>')
+  .description('Resume a past session')
+  .action((id) => {
+    const engine = new FlappyEngine();
+    const res = engine.resumeSession(id);
+    if (!res) {
+      console.error(Palette.error(`✖ Session '${id}' not found`));
+      process.exit(1);
+    }
+    console.log(Palette.ok(`✔ Loaded session '${id}' (${res.messages.length} message(s), project: ${res.session.project_path})`));
+  });
+
+sessionsCmd
   .command('delete <id>')
   .description('Delete a session')
   .action((id) => {
@@ -1177,4 +1479,28 @@ sessionsCmd
     console.log(Palette.ok(`✔ Deleted session '${id}'`));
   });
 
+// Agents command
+const agentsCmd = program.command('agents').description('Manage agent definitions');
+agentsCmd
+  .command('list')
+  .description('List available agents (built-in and custom)')
+  .action(() => {
+    const engine = new FlappyEngine();
+    const agents = engine.listAgents();
+    console.log(Palette.bold(`Available Agents (${Object.keys(agents).length}):\n`));
+    for (const [name, def] of Object.entries(agents)) {
+      console.log(`  ${Palette.cyan(name)}: ${def.system_prompt.slice(0, 80)}...`);
+      console.log(`    Default model: ${Palette.dim(def.preferred_model_ref || 'flappyauto')} | Tools: ${Palette.dim(def.allowed_tools.join(', ') || 'none')}\n`);
+    }
+  });
+
+// Guard against unknown subcommands silently launching the TUI
+const knownCommands = ['providers', 'models', 'doctor', 'sessions', 'agents', 'config', 'serve'];
+const firstArg = process.argv[2];
+if (firstArg && !firstArg.startsWith('-') && !knownCommands.includes(firstArg)) {
+  console.error(Palette.error(`✖ Unknown command: '${firstArg}'. Run 'flappycode --help' for usage.`));
+  process.exit(1);
+}
+
 program.parse(process.argv);
+

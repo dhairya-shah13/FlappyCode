@@ -29,6 +29,11 @@ export interface MockScenario {
    * fail the next `times` completions (undefined = forever) with `kind`.
    */
   failModels?: Record<string, { kind: 'rate_limit' | 'server' | 'timeout' | 'quota' | 'not_found'; times?: number; retryAfterSeconds?: number }>;
+  healthStatus?: 'healthy' | 'rate_limited' | 'auth_failed' | 'offline';
+  healthError?: string;
+  latencyMs?: number;
+  forceRateLimited?: boolean;
+  forceOffline?: boolean;
   cannedResponses?: Record<string, string[]>; // modelId -> sequence of responses
   cannedToolCalls?: Record<
     string,
@@ -299,18 +304,44 @@ export class MockProviderConnector implements ProviderConnector {
   }
 
   public async healthCheck(_cfg: ProviderConfig): Promise<HealthInfo> {
+    const latency = this.scenario.latencyMs ?? 12;
+    if (this.scenario.healthStatus) {
+      return {
+        status: this.scenario.healthStatus,
+        latencyMs: latency,
+        lastChecked: Date.now(),
+        error: this.scenario.healthError,
+      };
+    }
     if (this.scenario.forceAuthFailure) {
       return {
         status: 'auth_failed',
-        latencyMs: 15,
+        latencyMs: latency,
         lastChecked: Date.now(),
-        error: this.scenario.authError,
+        error: this.scenario.authError || 'Authentication failed: 401 Unauthorized',
+      };
+    }
+    if (this.scenario.forceRateLimited) {
+      return {
+        status: 'rate_limited',
+        latencyMs: latency,
+        lastChecked: Date.now(),
+        error: this.scenario.healthError || 'Rate limit exceeded: 429 Too Many Requests',
+      };
+    }
+    if (this.scenario.forceOffline) {
+      return {
+        status: 'offline',
+        latencyMs: latency,
+        lastChecked: Date.now(),
+        error: this.scenario.healthError || 'Endpoint unreachable (ECONNREFUSED)',
       };
     }
     return {
       status: 'healthy',
-      latencyMs: 12,
+      latencyMs: latency,
       lastChecked: Date.now(),
     };
   }
 }
+

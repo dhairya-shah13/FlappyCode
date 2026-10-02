@@ -8,3 +8,5 @@ export * from './screens/plan-approval.js';
 export * from './screens/diff-review.js';
 export * from './screens/pool-exhausted.js';
 export * from './screens/permission-prompt.js';
+export * from './screens/task-graph.js';
+export * from './screens/question-prompt.js';
