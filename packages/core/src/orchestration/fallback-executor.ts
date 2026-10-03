@@ -335,7 +335,12 @@ export class FallbackExecutor {
       if (options.preFlight) {
         const providerCfg = this.opts.providerRepo.get(selected.provider_id);
         if (providerCfg) {
-          const connector = this.opts.registry.getConnector(providerCfg.type);
+          let connector: ProviderConnector;
+          try {
+            connector = this.opts.registry.getConnector(providerCfg.id);
+          } catch {
+            connector = this.opts.registry.getConnector(providerCfg.type);
+          }
           const apiKey = await this.opts.secretStore.resolveSecretRef(providerCfg.api_key_ref);
           try {
             const passed = await options.preFlight({
@@ -411,7 +416,11 @@ export class FallbackExecutor {
     let connector: ProviderConnector;
     let apiKey: string | undefined;
     try {
-      connector = this.opts.registry.getConnector(providerCfg.id);
+      try {
+        connector = this.opts.registry.getConnector(providerCfg.id);
+      } catch {
+        connector = this.opts.registry.getConnector(providerCfg.type);
+      }
       apiKey = (await this.opts.secretStore.resolveSecretRef(providerCfg.api_key_ref)) || undefined;
     } catch (err: any) {
       this.opts.registry.recordModelError(model.provider_id, model.model_id, FAILURE_COOLDOWN_SECONDS.auth);

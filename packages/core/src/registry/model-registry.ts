@@ -65,10 +65,8 @@ export class ModelRegistry {
       }
     }
     if (!conn) {
-      conn = this.connectors.get('openai-compatible');
-    }
-    if (!conn) {
-      throw new Error(`No connector registered for provider '${typeOrId}'`);
+      const supported = Array.from(this.connectors.keys()).join(', ');
+      throw new Error(`Unknown provider connector '${typeOrId}'. Supported connector types: ${supported}`);
     }
     return conn;
   }

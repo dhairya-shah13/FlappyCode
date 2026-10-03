@@ -64,6 +64,9 @@ export const PlanTokenSchema = z.object({
   allowed_files: z.array(z.string()),
   issued_at: z.number().int(),
   expires_at: z.number().int(),
+  scope_mode: z.enum(['explicit', 'single-model']).default('explicit'),
+  scopeMode: z.enum(['explicit', 'single-model']).optional(),
+  user_prompt: z.string().optional(),
 });
 export type PlanToken = z.infer<typeof PlanTokenSchema>;
 

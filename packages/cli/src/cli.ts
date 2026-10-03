@@ -44,6 +44,8 @@ import {
   TaskGraphScreen,
   QuestionPromptScreen,
 } from '@flappycode/tui';
+import { runModelPickerFlow, ModelPickerFlowOptions, ModelPickerResult } from './model-picker-flow.js';
+export { runModelPickerFlow, ModelPickerFlowOptions, ModelPickerResult };
 
 export const ExitCodes = {
   SUCCESS: 0,
@@ -79,10 +81,107 @@ program.exitOverride((err) => {
   throw err;
 });
 
-// Default action: Launch interactive TUI
-program.action(async () => {
-  const engine = new FlappyEngine();
+export interface LaunchTUIOptions {
+  resumeSessionId?: string;
+  engine?: FlappyEngine;
+  printOnly?: boolean;
+}
+
+// Interactive TUI entry point (GAP-REM-04)
+export async function launchTUI(options: LaunchTUIOptions = {}): Promise<void> {
+  const engine = options.engine ?? new FlappyEngine();
   const getWidth = () => process.stdout.columns || 100;
+  const projectRoot = process.cwd();
+  let currentSessionId = options.resumeSessionId;
+
+  let sessionData: { session: any; messages: any[] } | null = null;
+  if (currentSessionId) {
+    sessionData = engine.resumeSession(currentSessionId);
+    if (!sessionData) {
+      console.error(Palette.error(`✖ Session '${currentSessionId}' not found`));
+      process.exit(1);
+    }
+  }
+
+  const isPrintOnly = Boolean(options.printOnly || (currentSessionId && !process.stdin.isTTY));
+  if (isPrintOnly && sessionData) {
+    console.log(
+      Palette.ok(
+        `✔ Loaded session '${currentSessionId}' (${sessionData.messages.length} message(s), project: ${sessionData.session.project_path})`
+      )
+    );
+    return;
+  }
+
+  const defaultModel: string = (engine.config.model_policy as any)?.default_model || 'flappyauto';
+  let activeModelId: string = defaultModel;
+
+  if (currentSessionId) {
+    let recordedModel: string | undefined;
+    try {
+      const row = (engine as any).db?.db?.prepare?.(`
+        SELECT model_used FROM task_node
+        WHERE run_id IN (SELECT id FROM task_run WHERE session_id = ?)
+          AND model_used IS NOT NULL AND model_used != ''
+        ORDER BY rowid DESC LIMIT 1
+      `)?.get?.(currentSessionId) as { model_used?: string } | undefined;
+      if (row?.model_used) {
+        recordedModel = row.model_used;
+      }
+    } catch {
+      /* non-fatal */
+    }
+
+    if (recordedModel) {
+      const availableModels = engine.getModels();
+      const found = availableModels.find(
+        (m) => m.model_id === recordedModel || `${m.provider_id}/${m.model_id}` === recordedModel
+      );
+      if (!found || found.tier === 'disabled') {
+        console.log(
+          Palette.yellow(
+            `ℹ Session model '${recordedModel}' is unavailable or disabled. Falling back to default model (${defaultModel}).`
+          )
+        );
+      } else if (found.tier === 'paid') {
+        console.log(
+          Palette.yellow(
+            `ℹ Session model '${recordedModel}' is a paid model. Falling back to default model (${defaultModel}) for safety.`
+          )
+        );
+      } else {
+        activeModelId = found.model_id;
+        console.log(Palette.ok(`✔ Restored session model: ${activeModelId}`));
+      }
+    }
+  }
+
+  if (sessionData && sessionData.messages.length > 0) {
+    console.log(
+      Palette.bold(Palette.yellow('FLAPPY') + Palette.cyan('CODE')) +
+        ' ' +
+        Palette.subtle(`— Resumed Session ${currentSessionId}`)
+    );
+    console.log(
+      Palette.dim(`Project: ${sessionData.session.project_path} | History: ${sessionData.messages.length} message(s)\n`)
+    );
+    for (const msg of sessionData.messages) {
+      if (msg.role === 'user') {
+        console.log(`${Palette.cyan(Palette.bold('>_ '))} ${msg.content}`);
+      } else if (msg.role === 'assistant') {
+        console.log(`${Palette.ok(Palette.bold('Assistant: '))} ${msg.content}`);
+      } else {
+        console.log(`${Palette.dim(`[${msg.role}]`)} ${msg.content}`);
+      }
+    }
+    console.log('');
+  }
+
+  engine.eventBus.on('session.started', (ev) => {
+    if (!currentSessionId) {
+      currentSessionId = ev.session_id;
+    }
+  });
 
   const waitForAnyKey = (): Promise<void> => {
     return new Promise((resolve) => {
@@ -400,7 +499,10 @@ program.action(async () => {
         process.exit(0);
       }
       try {
-        const plan = await engine.submitPrompt(input);
+        const plan = await engine.submitPrompt(input, {
+          model: activeModelId !== 'flappyauto' ? activeModelId : undefined,
+          sessionId: currentSessionId,
+        });
         console.error(
           Palette.yellow(
             '✖ Approval required: Non-interactive piped execution requires plan approval. Use "flappycode run --approve-plan <prompt>".'
@@ -510,16 +612,16 @@ program.action(async () => {
       }
 
       if (line === '/models') {
-        process.stdout.write('\x1b[2J\x1b[H');
-        const models = engine.getModels();
-        if (models.length === 0) {
-          console.log(Palette.bold('\nModel Catalog (0 models):'));
-          console.log(Palette.subtle('No models registered. Connect a provider first via /providers add or flappycode providers add.'));
-        } else {
-          console.log(ModelPickerScreen.render(models, 0, getWidth()));
+        const res = await runModelPickerFlow(engine, projectRoot, activeModelId, {
+          promptPaidConfirm,
+        });
+        if (res.changed) {
+          activeModelId = res.selectedModelId;
         }
-        await waitForAnyKey();
-        process.stdin.setRawMode(true);
+        await new Promise((r) => setTimeout(r, 600));
+        if (process.stdin.isTTY) {
+          process.stdin.setRawMode(true);
+        }
         isExecuting = false;
         redraw();
         return;
@@ -743,7 +845,10 @@ program.action(async () => {
 
         let plan: Awaited<ReturnType<typeof engine.submitPrompt>> | null = null;
         try {
-          plan = await engine.submitPrompt(line);
+          plan = await engine.submitPrompt(line, {
+            model: activeModelId !== 'flappyauto' ? activeModelId : undefined,
+            sessionId: currentSessionId,
+          });
         } catch (err: any) {
           if (err?.name !== 'PoolExhaustedError' || !poolRunId) throw err;
           const outcome = await handlePoolExhaustedInteractive(poolRunId);
@@ -1038,6 +1143,11 @@ program.action(async () => {
       redraw();
     }
   });
+}
+
+// Default action: Launch interactive TUI
+program.action(async () => {
+  await launchTUI();
 });
 
 // Headless run command
@@ -1626,14 +1736,25 @@ sessionsCmd
 sessionsCmd
   .command('resume <id>')
   .description('Resume a past session')
-  .action((id) => {
+  .option('--print', 'Print session metadata only without launching interactive TUI')
+  .option('--no-tui', 'Do not launch interactive TUI (same as --print)')
+  .action(async (id, options) => {
     const engine = new FlappyEngine();
-    const res = engine.resumeSession(id);
-    if (!res) {
-      console.error(Palette.error(`✖ Session '${id}' not found`));
-      process.exit(1);
+    const isPrintOnly = Boolean(options.print || options.tui === false || !process.stdin.isTTY);
+    if (isPrintOnly) {
+      const res = engine.resumeSession(id);
+      if (!res) {
+        console.error(Palette.error(`✖ Session '${id}' not found`));
+        process.exit(1);
+      }
+      console.log(
+        Palette.ok(
+          `✔ Loaded session '${id}' (${res.messages.length} message(s), project: ${res.session.project_path})`
+        )
+      );
+      return;
     }
-    console.log(Palette.ok(`✔ Loaded session '${id}' (${res.messages.length} message(s), project: ${res.session.project_path})`));
+    await launchTUI({ resumeSessionId: id, engine });
   });
 
 sessionsCmd

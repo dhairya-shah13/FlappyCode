@@ -49,7 +49,9 @@ export class DeterministicRouter {
     // 0. Pinned agent binding wins if provided (and not an auto policy)
     if (!isAutoPolicy && pinnedModelId) {
       const candidates = this.registry.getModels();
-      const pinned = candidates.find((m) => m.model_id === pinnedModelId);
+      const pinned = candidates.find(
+        (m) => m.model_id === pinnedModelId || `${m.provider_id}/${m.model_id}` === pinnedModelId
+      );
       if (pinned && this.registry.isAvailable(pinned)) {
         // If pinned model is paid, auto-issue PaidGrant for user_pinned
         if (pinned.tier === 'paid') {

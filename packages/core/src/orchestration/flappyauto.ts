@@ -134,6 +134,8 @@ export class FlappyAutoOrchestrator {
   private nodeFeedback = new Map<string, FeedbackEntry>();
   private appliedFeedback = new Map<string, number>();
   private pinDisabledNodes = new Set<string>();
+  private isSingleModelRun = false;
+  private blockedWriteReasons: string[] = [];
 
   private pendingQuestions = new Map<
     string,
@@ -317,6 +319,8 @@ export class FlappyAutoOrchestrator {
     }
     this.activeSessionId = sessionId ?? null;
 
+    this.isSingleModelRun = false;
+    this.blockedWriteReasons = [];
     const singleModel = opts.model && opts.model !== 'flappyauto' ? opts.model : undefined;
     const rules = this.opts.rulesLoader.loadRules();
 
@@ -330,9 +334,11 @@ export class FlappyAutoOrchestrator {
     const projectFiles = this.opts.fsJail.listFiles('.', true);
     const availableAgents = this.listAgents();
 
-    // GAP-007: single-model mode bypasses the planner entirely —
-    // construct a single Coder node directly without LLM planning.
+    // GAP-007 / GAP-REM-01: single-model mode bypasses the planner entirely —
+    // construct a single Coder node directly without LLM planning, pre-seeding candidate paths.
     if (singleModel) {
+      this.isSingleModelRun = true;
+      const candidatePaths = this.extractCandidatePaths(prompt);
       const plan: PlanProposal = {
         run_id: runId,
         goal: prompt,
@@ -353,8 +359,8 @@ export class FlappyAutoOrchestrator {
           ],
           created_at: Date.now(),
         },
-        files_to_modify: [],
-        assumptions: [],
+        files_to_modify: candidatePaths,
+        assumptions: ['Single-model mode execution with scoped write access'],
         risks: [],
         planner_model: singleModel,
         timestamp: Date.now(),
@@ -475,10 +481,19 @@ export class FlappyAutoOrchestrator {
       throw new Error(`No pending plan matching run '${runId}'`);
     }
 
-    // Issue PlanToken via PlanGate per FR-RUL-003
-    // GAP-011: Never issue wildcard '*' if empty. Only explicitly approved files can be modified.
+    // Issue PlanToken via PlanGate per FR-RUL-003 and GAP-REM-01
     const allowedFiles = this.pendingPlan.files_to_modify;
-    this.opts.planGate.issueToken(runId, allowedFiles);
+    const isSingleModel =
+      this.isSingleModelRun ||
+      (this.pendingPlan.assumptions || []).some((a) => a.toLowerCase().includes('single-model'));
+    const scopeMode = isSingleModel ? 'single-model' : 'explicit';
+    this.opts.planGate.issueToken(
+      runId,
+      allowedFiles,
+      3600000,
+      scopeMode,
+      this.pendingPlan.goal
+    );
 
     if (this.opts.taskRepo) {
       try {
@@ -648,7 +663,12 @@ export class FlappyAutoOrchestrator {
           async (node: TaskNode, signal: AbortSignal) => {
             const agentDef = this.resolveAgent(node.agent);
             const binding = this.resolveBinding(node.agent, agentDef);
-            const pinned = binding && binding !== 'flappyauto' ? binding : undefined;
+            const pinned =
+              this.isSingleModelRun && this.pendingPlan?.planner_model && this.pendingPlan.planner_model !== 'flappyauto'
+                ? this.pendingPlan.planner_model
+                : binding && binding !== 'flappyauto'
+                  ? binding
+                  : undefined;
 
             const req = {
               taskType:
@@ -742,6 +762,10 @@ export class FlappyAutoOrchestrator {
       }
       const hasCoderNode = this.pendingPlan.graph.nodes.some((n) => n.agent === 'Coder');
       if (hasCoderNode && this.stagedChanges.size === 0) {
+        if (this.blockedWriteReasons.length > 0) {
+          const reasons = Array.from(new Set(this.blockedWriteReasons)).join('; ');
+          throw new Error(`Coder agent completed without staging changes due to blocked writes: ${reasons}`);
+        }
         throw new Error(`Coder agent completed without staging changes. Check model output or tool calls.`);
       }
 
@@ -913,8 +937,36 @@ export class FlappyAutoOrchestrator {
     if (!messages) {
       messages = [
         { role: 'system', content: prompt },
-        { role: 'user', content: node.description },
       ];
+      // GAP-REM-04 / FR-CTX-001: hydrate prior session message history if continuing in an existing session
+      if (this.activeSessionId && this.opts.sessionRepo) {
+        try {
+          const priorRecords = this.opts.sessionRepo.getMessages(this.activeSessionId);
+          // priorRecords includes the current prompt (added at startRun as the last record)
+          const priorHistory = priorRecords
+            .slice(0, -1)
+            .map((m) => ({
+              role: (m.role === 'assistant' || m.role === 'system' ? m.role : 'user') as 'user' | 'assistant' | 'system',
+              content: m.content,
+            }));
+          if (priorHistory.length > 0) {
+            const slice = this.contextManager.buildContextSlice(node.description, priorHistory);
+            messages.push(...slice.turns);
+            if (slice.compacted) {
+              this.opts.eventBus.emit({
+                type: 'log',
+                level: 'info',
+                message: `Context compacted for [${node.agent}] to conserve tokens (earlier turns summarized, not dropped).`,
+                context: { run_id: runId, node_id: node.id },
+                timestamp: Date.now(),
+              });
+            }
+          }
+        } catch {
+          /* non-fatal */
+        }
+      }
+      messages.push({ role: 'user', content: node.description });
     }
     const feedbackEntry = this.nodeFeedback.get(node.id);
     if (feedbackEntry && this.appliedFeedback.get(node.id) !== feedbackEntry.iteration) {
@@ -1239,6 +1291,35 @@ export class FlappyAutoOrchestrator {
     return defs;
   }
 
+  private extractCandidatePaths(prompt: string): string[] {
+    const candidates = new Set<string>();
+
+    const quoted = prompt.matchAll(/["']([^"'<>|:*?\r\n]+?\.[a-zA-Z0-9_-]+)["']/g);
+    for (const m of quoted) {
+      if (m[1]) candidates.add(m[1].trim());
+    }
+
+    const tokens = prompt.matchAll(/(?:^|[\s,;:])([a-zA-Z0-9_.-]+(?:[/\\][a-zA-Z0-9_.-]+)*\.[a-zA-Z0-9_-]+)(?:[\s,;:]|$)/g);
+    for (const m of tokens) {
+      if (m[1]) {
+        const clean = m[1].replace(/^[.,;:]+|[.,;:]+$/g, '').trim();
+        if (!/^\d+\.\d+$/.test(clean) && clean.length > 2) {
+          candidates.add(clean);
+        }
+      }
+    }
+
+    const relPaths = prompt.matchAll(/(?:^|[\s,;:])((?:\.\/|\b)[a-zA-Z0-9_-]+(?:[/\\][a-zA-Z0-9_.-]+)+)(?:[\s,;:]|$)/g);
+    for (const m of relPaths) {
+      if (m[1]) {
+        const clean = m[1].replace(/^[.,;:]+|[.,;:]+$/g, '').trim();
+        candidates.add(clean);
+      }
+    }
+
+    return Array.from(candidates);
+  }
+
   private sanitizePath(p: string): string {
     let clean = p.trim().replace(/^['"]|['"]$/g, '');
     if ((clean.startsWith('/') || clean.startsWith('\\')) && !/^[a-zA-Z]:[/\\]/.test(clean)) {
@@ -1300,13 +1381,30 @@ export class FlappyAutoOrchestrator {
 
     if (tc.name === 'write_file' && args.path && args.content !== undefined) {
       const cleanPath = this.sanitizePath(args.path);
-      const isAuthorized = this.pendingPlan
-        ? this.opts.planGate.validateOperation(this.pendingPlan.run_id, cleanPath)
-        : false;
+      const token = this.pendingPlan ? this.opts.planGate.getToken(this.pendingPlan.run_id) : undefined;
+      const validation = this.opts.planGate.validateScope(
+        token || (this.pendingPlan ? this.pendingPlan.run_id : ''),
+        cleanPath,
+        {
+          projectRoot: this.opts.projectRoot,
+          fsJail: this.opts.fsJail,
+          userPrompt: this.pendingPlan?.goal,
+          fileContent: args.content,
+        }
+      );
 
-      if (!isAuthorized) {
-        // GAP-011: Out-of-plan write MUST NOT expand token or stage change
-        const blockedMsg = `PlanGate Blocked: Path '${cleanPath}' is outside the approved plan scope. Ask the user for approval before touching files outside the approved plan.`;
+      if (!validation.allowed) {
+        const blockedMsg =
+          validation.reason ||
+          `PlanGate Blocked: Path '${cleanPath}' is outside the approved plan scope. Ask the user for approval before touching files outside the approved plan.`;
+        this.blockedWriteReasons.push(blockedMsg);
+        this.opts.eventBus.emit({
+          type: 'log',
+          level: 'warn',
+          message: blockedMsg,
+          context: { run_id: runId, path: cleanPath, reason: validation.reason },
+          timestamp: Date.now(),
+        });
         this.recordToolCall(node, {
           id: tc.id,
           tool: 'write_file',

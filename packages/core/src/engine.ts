@@ -24,6 +24,7 @@ import {
   DetectorOptions,
   LocalProviderDetector,
   PROVIDER_PROFILES,
+  ProviderConnector,
 } from '@flappycode/providers';
 
 import { FlappyEventBus } from './events/event-bus.js';
@@ -261,7 +262,7 @@ export class FlappyEngine {
    */
   public async addProvider(cfg: ProviderConfig, apiKey?: string): Promise<Model[]> {
     // GAP-041: source data-use policy from the bundled provider profile list.
-    const profile = PROVIDER_PROFILES[cfg.id];
+    const profile = PROVIDER_PROFILES[cfg.id] || PROVIDER_PROFILES[cfg.type];
     if (profile && (!cfg.data_use_policy || cfg.data_use_policy === 'unknown')) {
       cfg.data_use_policy = profile.defaultDataUsePolicy;
     }
@@ -272,8 +273,13 @@ export class FlappyEngine {
       cfg.api_key_ref = `provider:${cfg.id}`;
     }
 
-    // B6/GAP-039: validate credentials before persisting/activating.
-    const connector = this.registry.getConnector(cfg.id);
+    // B6/GAP-039 / GAP-REM-03: validate credentials before persisting/activating.
+    let connector: ProviderConnector;
+    try {
+      connector = this.registry.getConnector(cfg.id);
+    } catch {
+      connector = this.registry.getConnector(cfg.type);
+    }
     let resolvedKey: string | undefined;
     if (cfg.api_key_ref) {
       resolvedKey = (await this.secretStore.resolveSecretRef(cfg.api_key_ref)) || undefined;
@@ -671,7 +677,16 @@ export class FlappyEngine {
 
     const results = [];
     for (const p of providers) {
-      const connector = this.registry.getConnector(p.id);
+      let connector: ProviderConnector | undefined;
+      try {
+        connector = this.registry.getConnector(p.id);
+      } catch {
+        try {
+          connector = this.registry.getConnector(p.type);
+        } catch {
+          // Connector type has no registered implementation
+        }
+      }
       if (!connector) {
         results.push({
           provider_id: p.id,

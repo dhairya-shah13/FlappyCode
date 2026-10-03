@@ -16,8 +16,23 @@ export class PlanApprovalScreen {
     });
 
     content += `│                                                                              │\n`;
-    const filesStr = plan.files_to_modify.length > 0 ? plan.files_to_modify.join(', ') : 'None';
-    content += `│ Files that may change: ${filesStr.slice(0, 50).padEnd(50)} │\n`;
+    const isSingleModel =
+      plan.graph.nodes.length === 1 &&
+      plan.graph.nodes[0]?.agent === 'Coder' &&
+      ((plan.assumptions || []).some((a) => a.toLowerCase().includes('single-model')) ||
+        plan.planner_model !== 'flappyauto');
+
+    if (isSingleModel) {
+      const candidates =
+        plan.files_to_modify.length > 0
+          ? plan.files_to_modify.join(', ')
+          : '(scoped write access in project sandbox)';
+      content += `│ Scope: Single-model mode (grants scoped write access within sandbox)         │\n`;
+      content += `│ Candidate files: ${candidates.slice(0, 50).padEnd(50)} │\n`;
+    } else {
+      const filesStr = plan.files_to_modify.length > 0 ? plan.files_to_modify.join(', ') : 'None';
+      content += `│ Files that may change: ${filesStr.slice(0, 50).padEnd(50)} │\n`;
+    }
     if (plan.assumptions.length > 0) {
       content += `│ Assumptions: ${plan.assumptions.join('; ').slice(0, 60).padEnd(60)} │\n`;
     }

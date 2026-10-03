@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented in this file in reverse chronological order.
 
+## [2026-10-03 15:00]
+
+### [Category: Remediation] — Phase 1 Final Remediation: Closure of Acceptance Audit Gaps
+What changed: Addressed and verified all four gaps from the independent audit (`PHASE1_FINAL_ACCEPTANCE_AUDIT.md`):
+- **GAP-REM-03 (Provider Connector Lookup by Type)**: Fixed connector resolution in `packages/core/src/engine.ts` (`addProvider`, fallback profile lookup, and `doctorProvider`) and `fallback-executor.ts` to look up by `cfg.type` rather than `cfg.id`. Replaced silent fallback to `openai-compatible` in `ModelRegistry.getConnector` with a clear, descriptive error listing supported connector types. Verified with tests in `tests/unit/gap-rem-03-provider-connector.test.ts`.
+- **GAP-REM-01 (Single-Model Mode PlanGate Scoped Write Access)**: Resolved single-model execution deadlock where empty `files_to_modify` rejected all writes. Added `scopeMode: 'single-model'` in `PlanToken` and `PlanGate.validateScope`. Pre-seeds candidate paths extracted from user prompts, enforces canonical FsJail boundaries (`realpathSync`), blocks writes to the protected set (`.git/**`, `.env*`, `**/node_modules/**`, `RULES.md`, `.flappycode/**`, and lockfiles unless explicitly named), and verifies blocked action rules. Mandatory diff staging remains enforced. Surfaces actionable blocked-write reasons and audit-logs every write attempt to `tool_call_log`. Verified with tests in `tests/unit/gap-rem-01-singlemode-plangate.test.ts` and the live CLI repro command.
+- **GAP-REM-02 (Interactive Model Picker Selection)**: Added interactive selection state (`cursorIndex`, `moveUp`, `moveDown` with wrapping, `getSelected`, `[ACTIVE]` indicator) in `packages/tui/src/screens/model-picker.ts`. Built raw-mode key-input loop in `packages/cli/src/model-picker-flow.ts` and `cli.ts` (`↑`/`↓`/`k`/`j` move, `Enter` selects, `Esc`/`q` cancels, `Ctrl+C` exits 130). Integrated PaidGate confirmation checks, disabled-tier refusal, and configuration persistence (`model_policy.default_model`). Verified with tests in `tests/unit/gap-rem-02-model-picker.test.ts`.
+- **GAP-REM-04 (`sessions resume` Interactive App Continuation)**: Extended CLI launch entry point `launchTUI` to support `resumeSessionId`. Hydrates prior conversation history from SQLite into agent nodes with context compaction, renders prior transcript, restores recorded session model (falling back safely if disabled or paid), and appends subsequent conversation turns to the same session ID. Added `--print` and `--no-tui` options for non-interactive metadata output. Verified with tests in `tests/unit/gap-rem-04-sessions-resume.test.ts`.
+Why: Remediate all audit deficiencies through real production execution paths, keeping security controls intact, preserving green test status across the suite, and preparing FlappyCode for re-audit acceptance.
+Key evidence: 26/26 new remediation tests passing; live `flappycode run ... --model mock/mock-coder-free --approve-plan` repro succeeds (exit 0); all existing tests pass; packaging smoke test verified.
+
 ## [2026-10-02 23:25]
 
 ### [Category: Release] — Phase 1 Re-Audit & Gap Closure: Complete Implementation of All Remaining Backlog Items

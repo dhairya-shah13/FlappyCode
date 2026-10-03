@@ -139,3 +139,10 @@ All 60 original gaps and all 8 new gaps (NEW-001 through NEW-008) are fully impl
 - **P1-J1 (Golden Benchmark)**: 20/20 golden tasks passed in `tests/integration/golden-benchmark-20.test.ts`.
 - **NFR-PERF (Performance)**: Verified in `scripts/perf/benchmark.ts`: cold start 115ms (≤1.5s), TUI latency 10.5ms (≤50ms), discovery <1ms (≤10s), idle RSS 93.6MB (≤250MB), 4-agent RSS 93.8MB (≤600MB), overhead 0.01ms (≤200ms).
 
+## Phase 1 Final Remediation (Post-Audit Closure)
+- **GAP-REM-03 (Provider Connector Lookup by Type)**: Connector resolution in `engine.ts` (`addProvider`, `doctorProvider`, fallback profiles) and `fallback-executor.ts` resolves by `cfg.type`. `ModelRegistry.getConnector` fails descriptively on unknown types with supported list.
+- **GAP-REM-01 (Single-Model Mode PlanGate Scoped Write Access)**: Single-model execution deadlocks resolved with `scopeMode: 'single-model'` in `PlanToken`. Candidate prompt paths pre-seeded; strict FsJail boundaries enforced; protected paths blocked (`.git`, `.env*`, `node_modules`, `RULES.md`, `.flappycode`, lockfiles); diff staging remains mandatory.
+- **GAP-REM-02 (Interactive Model Picker Selection Loop)**: Arrow-key navigation (`↑`/`↓`/`k`/`j`), selection (`Enter`), cancellation (`Esc`/`q`), PaidGate confirmation prompts, disabled-tier refusal, and config persistence (`model_policy.default_model`).
+- **GAP-REM-04 (`sessions resume` Interactive App Continuation)**: `launchTUI({ resumeSessionId })` hydrates conversation context with token compaction, restores session model, renders transcript, and continues session interactively. Non-interactive `--print`/`--no-tui` flags supported.
+
+

@@ -141,13 +141,18 @@ flappycode providers             add | list | remove | test | refresh | enable |
 flappycode models                List the pool (--free, --provider, --json, --tier)
 flappycode agents                list | show <name> | bind <agent> <model>
 flappycode config                get | set | edit | path
-flappycode sessions              list | resume <id> | delete <id>
+flappycode sessions              list | resume <id> [--print] [--no-tui] | delete <id>
 flappycode doctor                Diagnose environment, keychain, providers, DB
 flappycode upgrade               Update to latest version
 flappycode login | logout | whoami | telemetry show|off | delete-account   (Phase 2)
 flappycode --version | --help
 ```
 Exit codes: `0` success, `1` task failed, `2` usage error, `3` needs approval (headless without `--approve-plan`), `4` free pool exhausted, `5` no providers, `130` cancelled.
+
+**Session Resumption (`flappycode sessions resume <id>`):**
+- **Interactive TUI mode:** When executed in a TTY, launches the interactive app resuming the conversation context, displays the prior transcript, restores the session's recorded model (falling back safely to the default model if disabled or paid), and continues appending subsequent conversation turns to the same session ID.
+- **Non-interactive mode (`--print` / `--no-tui` / non-TTY):** Prints session metadata (`✔ Loaded session '<id>' (N message(s), project: <path>)`) and exits 0 immediately for scripts.
+- **Error handling:** An unknown session ID prints `✖ Session '<id>' not found` and exits code 1.
 
 ### 5.2 First-run onboarding (inside the TUI, no providers)
 
@@ -195,7 +200,17 @@ Exit codes: `0` success, `1` task failed, `2` usage error, `3` needs approval (h
 │ ↑↓ move  ↵ select  Tab: bind to agent…  f: free only  d: data-use info  Esc      │
 ╰────────────────────────────────────────────────────────────────────────────────╯
 ```
-`flappyauto` is **always the first row** (FR-ORC-001). Selecting a single model shows a banner "Single-model mode — no orchestration". `Tab` on a model opens "Bind to agent…" (Planner / Coder / Reviewer / …). Model names above are illustrative.
+`flappyauto` is **always the first row** (FR-ORC-001). Selecting a single model activates "Single-model mode — no orchestration". `Tab` on a model opens "Bind to agent…" (Planner / Coder / Reviewer / …). Model names above are illustrative.
+
+**Keybindings & Selection Loop:**
+- `↑`/`↓` and `k`/`j`: Move selection cursor up/down (wraps at boundaries).
+- `Enter`: Select model at cursor.
+  - If a paid model is chosen, prompts via PaidGate confirmation. No grant is created without explicit user confirmation.
+  - If a disabled model is chosen, selection is rejected with an explanatory notice.
+  - On valid selection, persists to configuration (`model_policy.default_model`), sets the in-memory active model for the session, and prints confirmation.
+- `Esc` / `q`: Cancel and return to home prompt with active model unchanged.
+- `Ctrl+C`: Clean exit (code 130).
+- Non-TTY fallback: Prints model catalog cleanly and returns without blocking.
 
 ### 5.6 Implementation Plan approval (mandatory before any write — FR-RUL-003)
 

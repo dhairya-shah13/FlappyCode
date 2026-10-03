@@ -70,11 +70,13 @@ export const FlappyConfigSchema = z.object({
     allow_paid_models: z.boolean().default(false),
     revalidate_every_hours: z.number().int().positive().default(6),
     privacy_mode: z.enum(['strict', 'standard']).default('standard'),
+    default_model: z.string().optional().default('flappyauto'),
   }).default({
     default_tier: 'free',
     allow_paid_models: false,
     revalidate_every_hours: 6,
     privacy_mode: 'standard',
+    default_model: 'flappyauto',
   }),
   agents: z.array(AgentDefinitionSchema).default([]),
   permissions: PermissionConfigSchema.default({
