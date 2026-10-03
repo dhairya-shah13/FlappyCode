@@ -117,32 +117,31 @@ FlappyCode is a developer-centric CLI tool, local loopback daemon, and multi-age
   - `flappycode config`: Inspect, get, set, locate, and edit configuration (`get`, `set`, `path`, `edit`).
 
 ## Verification & Test Results
-- **Unit & Integration Test Suite**: 66 test suites, 474 passing tests (0 failures, 0 skips) across Stage A through G, new audit gaps, and the 20-task golden benchmark.
-- **Coverage**: Core overall coverage is 78.45% statements (baseline ≥ 70%). Safety-critical modules exceed all thresholds: Router 97.02%, Classifier 100%, PermissionEngine 96.00%, PlanGate 95.55%, RulesLoader 96.17%, RateLimiter 94.73%, SearchTool 89.93%, SemanticIndex 95.34%, DocsKeeper 100%.
+- **Unit & Integration Test Suite**: 70 test suites, 500 passing tests (0 failures, 0 skips) across Stage A through G, new audit gaps, the 20-task golden benchmark, and final remediation suites (`gap-rem-01` through `gap-rem-04`).
+- **Coverage**: Monorepo statement and line coverage is 76.05% (overall core statement coverage 78.42%), exceeding the mandatory ≥ 70% threshold. Safety-critical modules exceed all thresholds: Router 97.02%, Classifier 100%, PermissionEngine 96.00%, PlanGate 95.55%, RulesLoader 96.17%, RateLimiter 94.73%, SearchTool 89.93%, SemanticIndex 95.34%, DocsKeeper 100%.
 - **TypeScript**: Strict typechecking (`tsc --noEmit`) passes with 0 errors across all workspace packages and test suites.
-- **Build**: All packages (`@flappycode/protocol`, `@flappycode/providers`, `@flappycode/storage`, `@flappycode/core`, `@flappycode/server`, `@flappycode/tui`, `@flappycode/cli`) build cleanly to ESM, CJS, and TypeScript declaration files (`.d.ts`).
+- **Build**: All 7 packages (`@flappycode/protocol`, `@flappycode/providers`, `@flappycode/storage`, `@flappycode/core`, `@flappycode/server`, `@flappycode/tui`, `@flappycode/cli`) build cleanly to ESM, CJS, and TypeScript declaration files (`.d.ts`).
 - **CI**: Automated GitHub Actions CI workflow in `.github/workflows/ci.yml` across Ubuntu, macOS, and Windows on Node 20 and Node 22, plus manual gated release workflow in `.github/workflows/release.yml`.
 - **Packaging Smoke Test**: Global install from packed local tarball (`npm pack`) verified in isolated clean prefix with `--version`, `--help`, `doctor`, and `run`.
+- **Formal Release Acceptance**: Phase 1 is formally certified as **ACCEPTED** under [docs/PHASE1_FINAL_ACCEPTANCE_AUDIT.md](file:///c:/Projects/FlappyCode/docs/PHASE1_FINAL_ACCEPTANCE_AUDIT.md).
 
-## Phase 1 Re-Audit & Gap Closure Register
+## Phase 1 Gap Closure & Final Remediation Register
 
-All 60 original gaps and all 8 new gaps (NEW-001 through NEW-008) are fully implemented and verified:
+All 60 original gaps, all 8 new gaps (NEW-001 through NEW-008), and all 4 remediation items (GAP-REM-01 through GAP-REM-04) are fully implemented and verified:
 - **NEW-001 (License)**: Root and package Apache-2.0 LICENSE added and bundled in tarball.
 - **NEW-002 (Agents CLI)**: `agents show <name>` and `agents bind <name> <model>` implemented with SQLite persistence.
 - **NEW-003 (Upgrade Command)**: `flappycode upgrade [--check] [--registry]` implemented with NFR-PRV-001 privacy toggle.
-- **NEW-004 (Documentation Suite)**: README updated to Phase 1 Release Candidate; published `docs/QUICKSTART.md`, `docs/PROVIDERS.md`, `docs/RULES-EXPLAINER.md`, `docs/KNOWN-LIMITATIONS.md`, and `docs/CLI-REFERENCE.md`.
-- **NEW-005 (Git Tracking)**: Comprehensive `.gitignore` configured; verified zero secret leaks; monorepo source committed locally.
+- **NEW-004 (Documentation Suite)**: Published active user and developer documentation: `docs/QUICKSTART.md`, `docs/PROVIDERS.md`, `docs/RULES-EXPLAINER.md`, `docs/KNOWN-LIMITATIONS.md`, and `docs/CLI-REFERENCE.md`. Cleaned up obsolete intermediate scratchpads.
+- **NEW-005 (Git Tracking)**: Comprehensive `.gitignore` configured; verified zero secret leaks; monorepo source committed.
 - **NEW-006 (Rate Limiter)**: Concurrency semaphores added; statement coverage raised to 94.73%.
 - **NEW-007 (Search Tool)**: Pure-JS fallback path implemented; statement coverage raised to 89.93%.
 - **NEW-008 (Community Catalog)**: Aligned with `ModelTierSchema` without opaque quality grades.
 - **P1-D8 (Semantic Index)**: Offline BM25 chunk index in `packages/core/src/tools/semantic-index.ts` with FsJail and SecretGuard integration (95.34% coverage).
 - **P1-J1 (Golden Benchmark)**: 20/20 golden tasks passed in `tests/integration/golden-benchmark-20.test.ts`.
 - **NFR-PERF (Performance)**: Verified in `scripts/perf/benchmark.ts`: cold start 115ms (≤1.5s), TUI latency 10.5ms (≤50ms), discovery <1ms (≤10s), idle RSS 93.6MB (≤250MB), 4-agent RSS 93.8MB (≤600MB), overhead 0.01ms (≤200ms).
-
-## Phase 1 Final Remediation (Post-Audit Closure)
-- **GAP-REM-03 (Provider Connector Lookup by Type)**: Connector resolution in `engine.ts` (`addProvider`, `doctorProvider`, fallback profiles) and `fallback-executor.ts` resolves by `cfg.type`. `ModelRegistry.getConnector` fails descriptively on unknown types with supported list.
 - **GAP-REM-01 (Single-Model Mode PlanGate Scoped Write Access)**: Single-model execution deadlocks resolved with `scopeMode: 'single-model'` in `PlanToken`. Candidate prompt paths pre-seeded; strict FsJail boundaries enforced; protected paths blocked (`.git`, `.env*`, `node_modules`, `RULES.md`, `.flappycode`, lockfiles); diff staging remains mandatory.
 - **GAP-REM-02 (Interactive Model Picker Selection Loop)**: Arrow-key navigation (`↑`/`↓`/`k`/`j`), selection (`Enter`), cancellation (`Esc`/`q`), PaidGate confirmation prompts, disabled-tier refusal, and config persistence (`model_policy.default_model`).
+- **GAP-REM-03 (Provider Connector Lookup by Type)**: Connector resolution in `engine.ts` (`addProvider`, `doctorProvider`, fallback profiles) and `fallback-executor.ts` resolves by `cfg.type`. `ModelRegistry.getConnector` fails descriptively on unknown types with supported list.
 - **GAP-REM-04 (`sessions resume` Interactive App Continuation)**: `launchTUI({ resumeSessionId })` hydrates conversation context with token compaction, restores session model, renders transcript, and continues session interactively. Non-interactive `--print`/`--no-tui` flags supported.
 
 

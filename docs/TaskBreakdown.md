@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Document** | Task Breakdown & Timeline |
-| **Version** | 1.1 (Updated to current audit status) |
-| **Date** | 2 October 2026 (Audited) |
-| **Audit Status** | 58/60 gaps fixed, 397/397 tests pass, Phase 1 feature freeze complete (see `implemented.md`) |
-| **Related** | `PRD.md`, `SRS.md`, `SystemArchitecture.md`, `CLIDesign.md`, `implemented.md` |
+| **Version** | 1.2 (Phase 1 Final Acceptance Verified) |
+| **Date** | 3 October 2026 (Audited & Accepted) |
+| **Audit Status** | All Phase 1 gaps and remediation items resolved, 500/500 tests pass across 70 files, Phase 1 Accepted (see `docs/PHASE1_FINAL_ACCEPTANCE_AUDIT.md`) |
+| **Related** | `PRD.md`, `SRS.md`, `SystemArchitecture.md`, `CLIDesign.md`, `PHASE1_FINAL_ACCEPTANCE_AUDIT.md` |
 
 **How to use this file:** every task is a checkbox — tick `[x]` as you finish. Format: `ID — task — estimate (person-days, "d") — due`. Priority: **P0** must ship in the phase · **P1** if capacity allows · **P2** deferrable. Replace `@owner` with a name.
 
@@ -72,19 +72,19 @@ gantt
 | **S3** Foundation, Tools, Safety | monorepo, CI, schemas, storage, secrets, FS/shell/git/permissions | @owner |
 | **S4** TUI, CLI, Release, Docs | Ink UI per `CLIDesign.md`, commands, packaging, docs | @owner |
 
-### Current Implementation Status (Audited 2 Oct 2026 per `implemented.md`)
+### Current Implementation Status (Audited & Accepted 3 Oct 2026 per `docs/PHASE1_FINAL_ACCEPTANCE_AUDIT.md`)
 
 | Quality Gate / Metric | Result | Target | Status |
 |---|---|---|---|
 | **Lint** (`tsc --noEmit`) | 0 errors | 0 errors | ✅ PASS |
 | **Build** (`pnpm build`) | 7 packages succeed | 7 packages | ✅ PASS |
-| **Test Suite** (`pnpm test`) | 474/474 passed (66 files, 0 skips) | 100% pass | ✅ PASS |
-| **Code Coverage** | 78.45% overall core | ≥ 70% | ✅ PASS |
+| **Test Suite** (`pnpm test`) | **500/500 passed (70 test files, 0 skips)** | 100% pass | ✅ PASS |
+| **Code Coverage** | **76.05% monorepo (78.42% core)** | ≥ 70% | ✅ PASS |
 | **Safety Module Coverage** | Router 97.0%, Classifier 100%, PermissionEngine 96.0%, PlanGate 95.5%, RulesLoader 96.2%, RateLimiter 94.7%, SearchTool 89.9%, SemanticIndex 95.3%, DocsKeeper 100% | ≥ 90% / ≥ 85% | ✅ PASS |
-| **Prior Gap Register** | 60/60 resolved + NEW-001..NEW-008 resolved | 68 total gaps | ✅ 68/68 FIXED |
-| **Phase 1 Verdict** | All P0 & P1 requirements verified; zero open fixable gaps | Phase 1 Complete | ✅ PHASE 1 COMPLETE |
+| **Gaps & Remediation** | 60/60 original + 8/8 new + 4/4 remediation resolved | 72 total items | ✅ 72/72 FIXED |
+| **Phase 1 Verdict** | All P0 & P1 requirements verified; release gates met | Phase 1 Accepted | ✅ PHASE 1 ACCEPTED |
 
-**Status:** Zero open release blockers. Package builds, passes all 474 tests, bundles assets into self-contained tarball, and executes cleanly in clean-prefix test.
+**Status:** Zero open release blockers. Package builds, passes all 500 tests, bundles assets into self-contained tarball, and executes cleanly in clean-prefix test outside repo.
 
 ### 2.2 Week 1 — Tue 29 Sep → Sun 4 Oct: Foundations and first provider
 

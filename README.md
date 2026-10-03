@@ -2,8 +2,9 @@
 
 > **Your connected providers. All the free models. One powerful coding agent.**
 
-[![Project Status: Phase 1 RC](https://img.shields.io/badge/Status-Phase_1_Release_Candidate-22c55e?style=for-the-badge&logo=target)](docs/TaskBreakdown.md)
-[![Dev Kickoff](https://img.shields.io/badge/Dev_Kickoff-1_October_2026-3b82f6?style=for-the-badge&logo=calendar)](docs/TaskBreakdown.md)
+[![Project Status: Phase 1 Accepted](https://img.shields.io/badge/Status-Phase_1_Accepted-22c55e?style=for-the-badge&logo=checkmarx)](docs/PHASE1_FINAL_ACCEPTANCE_AUDIT.md)
+[![Tests](https://img.shields.io/badge/Tests-500%20Passed%20(100%25)-22c55e?style=for-the-badge&logo=vitest)](docs/PHASE1_FINAL_ACCEPTANCE_AUDIT.md)
+[![Coverage](https://img.shields.io/badge/Coverage-76.05%25%20Monorepo-22c55e?style=for-the-badge&logo=codecov)](docs/PHASE1_FINAL_ACCEPTANCE_AUDIT.md)
 [![Node Version](https://img.shields.io/badge/Node.js-≥_20_LTS-22c55e?style=for-the-badge&logo=node.js)](docs/SRS.md)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Strict-3178c6?style=for-the-badge&logo=typescript)](docs/SystemArchitecture.md)
 [![License](https://img.shields.io/badge/License-Apache_2.0-purple?style=for-the-badge)](LICENSE)
@@ -11,7 +12,7 @@
 ---
 
 > [!NOTE]  
-> **Pre-Release Notice:** FlappyCode Phase 1 is a Release Candidate undergoing internal dogfooding and testing. **It is not yet published to npm.** npm publication will follow after internal team testing and approval. See [Installation](#-installation) below for building from source or installing from a local tarball.
+> **Phase 1 Release Status:** FlappyCode Phase 1 Core CLI & Local Multi-Agent Orchestration Engine has passed its full acceptance audit with **500/500 passing tests**, 0 lint errors, and 76.05% monorepo coverage (see [docs/PHASE1_FINAL_ACCEPTANCE_AUDIT.md](docs/PHASE1_FINAL_ACCEPTANCE_AUDIT.md)). Pre-release installation is supported from source or via local tarball (`npm pack`) ahead of public npm publication.
 
 ---
 
@@ -333,12 +334,18 @@ FlappyCode/
 ├─ .github/                # CI / CD workflows (matrix builds: Win/macOS/Linux)
 ├─ apps/
 │  └─ web/                 # Phase 2: Web portal, dashboard & API backend
-├─ docs/                   # Product & Engineering Specifications
+├─ docs/                   # Specifications, Guides, and Acceptance Reports
 │  ├─ PRD.md               # Product Requirements Document
 │  ├─ SystemArchitecture.md# High-level architecture & logical layers
 │  ├─ SRS.md               # Software Requirements Specification
 │  ├─ CLIDesign.md         # Terminal UI & CLI interaction specifications
-│  └─ TaskBreakdown.md     # Phase-wise milestones & checklist
+│  ├─ TaskBreakdown.md     # Phase-wise milestones & checklist
+│  ├─ QUICKSTART.md        # 5-minute onboarding guide
+│  ├─ CLI-REFERENCE.md     # Command line flags, subcommands & exit codes
+│  ├─ PROVIDERS.md         # Provider setup & data privacy policies
+│  ├─ RULES-EXPLAINER.md   # Deterministic governance & PlanGate explainer
+│  ├─ KNOWN-LIMITATIONS.md # Technical boundaries & platform limits
+│  └─ PHASE1_FINAL_ACCEPTANCE_AUDIT.md # Release milestone verification report
 ├─ packages/
 │  ├─ protocol/            # Zod schemas & shared TypeScript types
 │  ├─ core/                # Orchestration engine, agents, router, rules
@@ -349,10 +356,9 @@ FlappyCode/
 │  ├─ server/              # HTTP / SSE server wrapper
 │  ├─ telemetry/           # Phase 2: Privacy-preserving closed telemetry
 │  └─ desktop/             # Phase 3: Desktop application shell
-├─ rules/
-│  └─ RULES.md             # Universal agent governance specification
 ├─ package.json
 ├─ pnpm-workspace.yaml
+├─ RULES.md                # Universal agent governance specification
 └─ README.md
 ```
 
@@ -360,13 +366,24 @@ FlappyCode/
 
 ## 📚 Documentation Index
 
-For deep-dive technical and design specifications, explore the documents in [`docs/`](docs/):
+For deep-dive technical specifications, user guides, and audit reports, explore [`docs/`](docs/):
 
+### Engineering & System Specifications
 - 📋 [**Product Requirements Document (PRD)**](docs/PRD.md): Vision, user personas, epics, and rollout strategy.
 - 📐 [**System Architecture**](docs/SystemArchitecture.md): System layers, event bus, concurrency, and security model.
 - 📝 [**Software Requirements Specification (SRS)**](docs/SRS.md): RFC 2119 testable requirements across all phases.
 - 🎨 [**CLI & TUI Design**](docs/CLIDesign.md): Terminal wireframes, ANSI palettes, keyboard flows, and screen states.
-- 📅 [**Task Breakdown & Timeline**](docs/TaskBreakdown.md): Granular checklists, workstreams (S1–S4), and milestones.
+- 📅 [**Task Breakdown & Timeline**](docs/TaskBreakdown.md): Granular checklists, workstreams (S1–S4), and Phase 2/3 roadmap.
+
+### User & Developer Guides
+- 🚀 [**Quickstart Guide**](docs/QUICKSTART.md): Step-by-step setup in under 5 minutes.
+- 📖 [**CLI Reference**](docs/CLI-REFERENCE.md): Full documentation of commands, options, and deterministic exit codes.
+- 🔌 [**Day-One Provider Setup**](docs/PROVIDERS.md): Connect Ollama, LM Studio, Groq, Google Gemini, and OpenAI-compatible providers.
+- 🛡️ [**RULES.md & Governance Explainer**](docs/RULES-EXPLAINER.md): Software-level plan gates, visual diff review, and circuit breakers.
+- ⚠️ [**Known Limitations**](docs/KNOWN-LIMITATIONS.md): Phase 1 scope limits, hardware baselines, and platform considerations.
+
+### Verification & Release Gate
+- 🏆 [**Phase 1 Final Acceptance Audit**](docs/PHASE1_FINAL_ACCEPTANCE_AUDIT.md): Authoritative forensic verification certifying all release gate criteria, 500/500 passing tests, and 76.05% test coverage.
 
 ---
 
